@@ -1,0 +1,7 @@
+name: deeptools
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - deeptools
+  - samtools

@@ -1,0 +1,26 @@
+# config.yaml
+
+# Sample information
+raw_dir: "/path/to/raw_data"  
+# Leave this empty if you want to automatically detect samples, or use samples: "all"
+samples:
+auto_detect_subdirs: true
+
+# Mapping tool
+mapper: "STAR"  # Options: STAR, bwa, bowtie2, HISAT2
+STAR_index: "/path/to/STAR/index"  # Path to STAR index
+chrom_sizes: "/path/to/chrom.sizes"  # Path to chromosome sizes file
+
+mask_repeats: false
+repeat_bed:
+
+# CPU threads
+# Leave this empty to use automatically detected threads
+threads:
+
+
+# Genome size for MACS3
+macs_gsize: "dm"
+
+# Bin size for bigwig
+bw_bin_size: 10

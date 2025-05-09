@@ -1,0 +1,35 @@
+import os
+from snakemake.utils import min_version
+min_version("9.3.3")
+
+# Config
+configfile: "config/config.yaml"
+
+if not config.get("threads"):
+    config["threads"] = max(4, os.cpu_count() // 8)
+    
+include: "rules/detect_samples.smk"
+include: "rules/fastp.smk"
+include: "rules/star.smk"
+include: "rules/bam_to_bigwig.smk"
+
+SAMPLES = get_sample_type_map(config["raw_dir"])
+print("\n[SAMPLE TYPE DETECTION]")
+for sample, s_type in SAMPLES.items():
+    print(f"  - {sample}: {s_type}")
+
+PE_SAMPLES = [s for s, t in SAMPLES.items() if t == "PE"]
+SE_SAMPLES = [s for s, t in SAMPLES.items() if t == "SE"]
+
+all_inputs = []
+all_inputs += expand("results/fastp/{sample}_pe_fastp.html", sample=PE_SAMPLES)
+all_inputs += expand("results/fastp/{sample}_se_fastp.html", sample=SE_SAMPLES)
+all_inputs += expand("results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam", sample=PE_SAMPLES + SE_SAMPLES)
+
+if config.get("mask_repeats", True):
+    all_inputs += expand("results/masked/{sample}_masked.bam", sample=PE_SAMPLES + SE_SAMPLES)
+all_inputs += expand("results/bigwig/{sample}.bw", sample=PE_SAMPLES + SE_SAMPLES)
+all_inputs += expand("results/bigwig/{sample}.rpkm.bw", sample=PE_SAMPLES + SE_SAMPLES)
+
+rule all:
+    input: all_inputs
