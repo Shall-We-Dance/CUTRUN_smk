@@ -52,6 +52,38 @@ cd CUTRUN_smk
 ```bash
 snakemake --use-conda --cores 16
 ```
+
+## 📁 Project Structure
+
+CUTRUN_smk/
+├── config/
+│   └── config.yaml              # Main configuration file
+│
+├── workflow/
+│   ├── Snakefile                # Entry point Snakefile
+│   ├── rules/                   # Modular rule files
+│   │   ├── fastp.smk
+│   │   ├── star.smk
+│   │   ├── bam_to_bigwig.smk
+│   │   └── detect_samples.smk
+│   └── envs/                    # Conda environments
+│       ├── fastp.yaml
+│       ├── star.yaml
+│       ├── bedtools.yaml
+│       └── deeptools.yaml
+├── results/                     # Final and intermediate output files
+│   ├── fastp/
+│   ├── star/
+│   └── bigwig/
+│
+├── logs/                        # Log files for each step
+│   ├── fastp/
+│   └── star/
+│
+├── .gitignore
+├── LICENSE
+└── README.md
+
 ## License
 
 MIT License
