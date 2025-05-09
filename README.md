@@ -55,6 +55,7 @@ snakemake --use-conda --cores 16
 
 ## 📁 Project Structure
 
+```
 CUTRUN_smk/
 ├── config/
 │   └── config.yaml              # Main configuration file
@@ -83,6 +84,7 @@ CUTRUN_smk/
 ├── .gitignore
 ├── LICENSE
 └── README.md
+```
 
 ## License
 
