@@ -72,6 +72,7 @@ CUTRUN_smk/
 │       ├── star.yaml
 │       ├── bedtools.yaml
 │       └── deeptools.yaml
+│
 ├── results/                     # Final and intermediate output files
 │   ├── fastp/
 │   ├── star/
