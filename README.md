@@ -1,6 +1,6 @@
 # Snakemake workflow for CUT&RUN Upstream Analysis
 
-This repository contains a modular and scalable Snakemake workflow for analyzing CUT&RUN data.
+This repository contains a modular and scalable [Snakemake](https://github.com/snakemake/snakemake) workflow for analyzing CUT&RUN data.
 
 ## Features
 
