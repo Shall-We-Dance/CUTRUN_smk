@@ -45,7 +45,7 @@ git clone https://github.com/Shall-We-Dance/CUTRUN_smk.git
 cd CUTRUN_smk
 ```
 
-2. Edit config.yaml to specify your paths and parameters.
+2. Edit `config.yaml` to specify your paths and parameters.
 
 3. Activate Snakemake and run the pipeline:
 
