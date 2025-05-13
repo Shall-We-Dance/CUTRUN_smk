@@ -1,5 +1,7 @@
 # Snakemake workflow for CUT&RUN Upstream Analysis
 
+[![run with conda](http://img.shields.io/badge/run%20with-conda-3EB049?labelColor=000000&logo=anaconda)](https://docs.conda.io/en/latest/)
+
 This repository contains a modular and scalable [Snakemake](https://github.com/snakemake/snakemake) workflow for analyzing CUT&RUN/ChIP-seq data.
 
 ## Features
