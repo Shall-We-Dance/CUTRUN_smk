@@ -25,13 +25,13 @@ rule star_pe:
              --readFilesIn {input.r1} {input.r2} \
              --outFileNamePrefix results/star/{wildcards.sample}/{wildcards.sample}_ \
              --outFilterMultimapNmax 100 \
-             --outSAMmultNmax 1 \
+             --outSAMmultNmax 100 \
              --outSAMattributes NH HI AS nM \
              --winAnchorMultimapNmax 100 \
              --outSAMtype BAM SortedByCoordinate \
-             --outSAMunmapped None > {log} 2>&1
+             --outSAMunmapped Within > {log} 2>&1
 
-        samtools index {output.bam}
+        samtools index -@ {threads} {output.bam}
         samtools flagstat {output.bam} > {output.metrics}
         """
 
@@ -56,32 +56,40 @@ rule star_se:
              --readFilesIn {input.r1} \
              --outFileNamePrefix results/star/{wildcards.sample}/{wildcards.sample}_ \
              --outFilterMultimapNmax 100 \
-             --outSAMmultNmax 1 \
+             --outSAMmultNmax 100 \
              --outSAMattributes NH HI AS nM \
              --winAnchorMultimapNmax 100 \
              --outSAMtype BAM SortedByCoordinate \
-             --outSAMunmapped None > {log} 2>&1
+             --outSAMunmapped Within > {log} 2>&1
 
-        samtools index {output.bam}
+        samtools index -@ {threads} {output.bam}
         samtools flagstat {output.bam} > {output.metrics}
         """
 
-# This rule is for masking repeats in the BAM file
-if config.get("mask_repeats") and config.get("repeat_bed"):
-    rule mask_repeats:
-        input:
-            bam = "results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam"
-        params:
-            repeats = config["repeat_bed"]
-        output:
-            masked_bam = "results/star/{sample}/{sample}_masked.bam"
-        log:
-            "logs/star/{sample}_mask.log"
-        threads: 1
-        conda:
-            "envs/bedtools.yaml"
-        shell:
-            """
-            bedtools intersect -v -abam {input.bam} -b {params.repeats} > {output.masked_bam} 2> {log}
-            samtools index {output.masked_bam}
-            """
+rule multimap_weight:
+    input:
+        bam = "results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam"
+    output:
+        bed = "results/star/{sample}/{sample}_multimap_weight.bed"
+    log:
+        "logs/star/{sample}_weight.log"
+    threads: config["threads"]
+    conda:
+        "../envs/star.yaml"
+    shell:
+        """
+        samtools view -@ {threads} {input.bam} | \
+        awk '{
+            for(i=12;i<=NF;i++) {
+                if($i ~ /^NH:i:/) {
+                    split($i,a,":")
+                    nh=a[3]
+                    break
+                }
+            }
+            if(nh) {
+                weight=1/nh
+                print $3"\t"$4-1"\t"$4+length($10)"\t.\t"weight"\t"$2
+            }   
+        }' > {output.bed} 2> {log}
+        """

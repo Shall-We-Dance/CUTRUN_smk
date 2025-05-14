@@ -7,8 +7,8 @@ from snakemake.io import glob_wildcards
 
 def detect_samples(raw_dir):
     patterns = [
-        "*_R1.fastq.gz", "*_R1.fq.gz",
-        "*_1.fastq.gz", "*_1.fq.gz",
+        "*_R1.fastq.gz", "*_1.fastq.gz", "*_R1_001.fastq.gz",
+        "*_R1.fq.gz", "*_1.fq.gz", "*_R1_001.fq.gz",
         "*.fastq.gz", "*.fq.gz"
     ]
     recursive = config.get("auto_detect_subdirs", False)
@@ -16,9 +16,9 @@ def detect_samples(raw_dir):
     for pattern in patterns:
         for filepath in glob.glob(os.path.join(raw_dir, "**" if recursive else "", pattern), recursive=recursive):
             filename = os.path.basename(filepath)
-            if re.search(r"(_R2|_2)\.f(ast)?q\.gz$", filename):
+            if re.search(r"(_R2|_2|_R2_001)\.f(ast)?q\.gz$", filename):
                 continue
-            name = re.sub(r"(_R1|_1)?\.f(ast)?q\.gz$", "", filename)
+            name = re.sub(r"(_R1|_1|_R1_001)?\.f(ast)?q\.gz$", "", filename)
             sample_set.add(name)
     return sorted(sample_set)
 
@@ -39,8 +39,8 @@ def get_sample_list(config):
 
 def get_sample_type_map(raw_dir):
     patterns_r1 = [
-        "*_R1.fastq.gz", "*_1.fastq.gz",
-        "*_R1.fq.gz", "*_1.fq.gz",
+        "*_R1.fastq.gz", "*_1.fastq.gz", "*_R1_001.fastq.gz",
+        "*_R1.fq.gz", "*_1.fq.gz", "*_R1_001.fq.gz",
         "*.fastq.gz", "*.fq.gz"
     ]
     sample_types_detected = {}
@@ -48,13 +48,13 @@ def get_sample_type_map(raw_dir):
     for pattern in patterns_r1:
         for filepath in glob.glob(os.path.join(raw_dir, "**" if recursive else "", pattern), recursive=recursive):
             filename = os.path.basename(filepath)
-            if re.search(r"(_R2|_2)\.f(ast)?q\.gz$", filename):
+            if re.search(r"(_R2|_2|_R2_001)\.f(ast)?q\.gz$", filename):
                 continue
-            sample = re.sub(r"(_R1|_1)?\.f(ast)?q\.gz$", "", filename)
+            sample = re.sub(r"(_R1|_1|_R1_001)?\.f(ast)?q\.gz$", "", filename)
             dir_path = os.path.dirname(filepath)
             r2_patterns = [
-                f"{sample}_R2.fastq.gz", f"{sample}_2.fastq.gz",
-                f"{sample}_R2.fq.gz", f"{sample}_2.fq.gz"
+                f"{sample}_R2.fastq.gz", f"{sample}_2.fastq.gz", f"{sample}_R2_001.fastq.gz",
+                f"{sample}_R2.fq.gz", f"{sample}_2.fq.gz", f"{sample}_R2_001.fq.gz"
             ]
             has_r2 = any(
                 glob.glob(os.path.join(dir_path, r2_pat))

@@ -6,7 +6,7 @@ min_version("9.3.3")
 configfile: "config/config.yaml"
 
 if not config.get("threads"):
-    config["threads"] = max(4, os.cpu_count() // 8)
+    config["threads"] = max(4, os.cpu_count() // 4)
     
 include: "rules/detect_samples.smk"
 include: "rules/fastp.smk"
@@ -25,11 +25,13 @@ all_inputs = []
 all_inputs += expand("results/fastp/{sample}_pe_fastp.html", sample=PE_SAMPLES)
 all_inputs += expand("results/fastp/{sample}_se_fastp.html", sample=SE_SAMPLES)
 all_inputs += expand("results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam", sample=PE_SAMPLES + SE_SAMPLES)
-
-if config.get("mask_repeats", True):
-    all_inputs += expand("results/masked/{sample}_masked.bam", sample=PE_SAMPLES + SE_SAMPLES)
+all_inputs += expand("results/star/{sample}/{sample}_multimap_weight.bed", sample=PE_SAMPLES + SE_SAMPLES)
+if config.get("filter_blacklist", True):
+    all_inputs += expand("results/bigwig/{sample}_blacklist.bw", sample=PE_SAMPLES + SE_SAMPLES)
+    all_inputs += expand("results/bigwig/{sample}_blacklist.rpkm.bw", sample=PE_SAMPLES + SE_SAMPLES)
 all_inputs += expand("results/bigwig/{sample}.bw", sample=PE_SAMPLES + SE_SAMPLES)
 all_inputs += expand("results/bigwig/{sample}.rpkm.bw", sample=PE_SAMPLES + SE_SAMPLES)
+all_inputs += expand("results/macs3/{sample}/{sample}_peaks.narrowPeak", sample=PE_SAMPLES)
 
 rule all:
     input: all_inputs
