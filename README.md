@@ -24,8 +24,6 @@ This repository contains a modular and scalable [Snakemake](https://github.com/s
 - 📊 **BigWig Generation with Normalization**  
   Converts BAM to bigWig using `deeptools` with and without normalization (e.g., RPKM), while excluding PCR duplicates (`--samFlagExclude 1024`).
 
----
-
 ## 🧬 Workflow Overview
 
 1. **Sample Detection**  
@@ -48,8 +46,6 @@ This repository contains a modular and scalable [Snakemake](https://github.com/s
 
 7. **Peak Calling**  
    Uses `MACS3` to call peaks from the aligned BAM files. 
-   
----
 
 ## 🚀 Quick Start
 
@@ -67,8 +63,6 @@ cd CUTRUN_smk
 ```bash
 snakemake --use-conda --cores 16
 ```
-
----
 
 ## 📁 Project Structure
 
@@ -107,21 +101,15 @@ CUTRUN_smk/
 └── README.md
 ```
 
----
-
 ## 📝 Notes
 
 * STAR genome index must be prebuilt.
 * For blacklist functionality, genome name must match those recognized by ENCODE (e.g., `hg38`, `mm10`).
 * `samtools`, `deeptools`, and other tools will auto-scale to the number of available threads (default `max/4`).
 
----
-
 ## License
 
 MIT License
-
----
 
 ## Contact
 
