@@ -11,7 +11,6 @@ rule star_pe:
         genome = config["STAR_index"]
     output:
         bam = "results/star/{sample}/{sample}_pe_Aligned.sortedByCoord.out.bam",
-        link = "results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam",
         metrics = "results/star/{sample}/{sample}_metrics.txt"
     log:
         "logs/star/{sample}.log"
@@ -31,8 +30,10 @@ rule star_pe:
              --winAnchorMultimapNmax 100 \
              --outSAMtype BAM SortedByCoordinate \
              --outSAMunmapped Within > {log} 2>&1
-        samtools index -@ {threads} {output.bam}
-        samtools flagstat {output.bam} > {output.metrics}
+        echo "Running samtools index for {wildcards.sample}..." >> {log} 2>&1
+        samtools index -@ {threads} {output.bam} >> {log} 2>&1
+        echo "Running samtools flagstat for {wildcards.sample}..." >> {log} 2>&1
+        samtools flagstat {output.bam} > {output.metrics} 2>> {log}
         """
 
 # This rule is for single-end reads
@@ -43,7 +44,6 @@ rule star_se:
         genome = config["STAR_index"]
     output:
         bam = "results/star/{sample}/{sample}_se_Aligned.sortedByCoord.out.bam",
-        link = "results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam",
         metrics = "results/star/{sample}/{sample}_metrics.txt"
     log:
         "logs/star/{sample}.log"
@@ -63,8 +63,10 @@ rule star_se:
              --winAnchorMultimapNmax 100 \
              --outSAMtype BAM SortedByCoordinate \
              --outSAMunmapped Within > {log} 2>&1
-        samtools index -@ {threads} {output.bam}
-        samtools flagstat {output.bam} > {output.metrics}
+        echo "Running samtools index for {wildcards.sample}..." >> {log} 2>&1
+        samtools index -@ {threads} {output.bam} >> {log} 2>&1
+        echo "Running samtools flagstat for {wildcards.sample}..." >> {log} 2>&1
+        samtools flagstat {output.bam} > {output.metrics} 2>> {log}
         """
 
 def get_bam_path(sample_name):
