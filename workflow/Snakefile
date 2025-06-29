@@ -13,7 +13,8 @@ include: "rules/fastp.smk"
 include: "rules/star.smk"
 include: "rules/bam_to_bigwig.smk"
 
-SAMPLES = get_sample_type_map(config["raw_dir"])
+SAMPLE_LIST = get_sample_list(config)
+SAMPLES = get_sample_type_map(config["raw_dir"], samples=SAMPLE_LIST)
 print("\n[SAMPLE TYPE DETECTION]")
 for sample, s_type in SAMPLES.items():
     print(f"  - {sample}: {s_type}")
@@ -27,8 +28,8 @@ all_inputs += expand("results/fastp/{sample}_se_fastp.html", sample=SE_SAMPLES)
 all_inputs += expand("results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam", sample=PE_SAMPLES + SE_SAMPLES)
 all_inputs += expand("results/star/{sample}/{sample}_multimap_weight.bed", sample=PE_SAMPLES + SE_SAMPLES)
 if config.get("filter_blacklist", True):
-    all_inputs += expand("results/bigwig/{sample}_blacklist.bw", sample=PE_SAMPLES + SE_SAMPLES)
-    all_inputs += expand("results/bigwig/{sample}_blacklist.rpkm.bw", sample=PE_SAMPLES + SE_SAMPLES)
+    all_inputs += expand("results/bigwig_blacklist/{sample}.bw", sample=PE_SAMPLES + SE_SAMPLES)
+    all_inputs += expand("results/bigwig_blacklist/{sample}.rpkm.bw", sample=PE_SAMPLES + SE_SAMPLES)
 all_inputs += expand("results/bigwig/{sample}.bw", sample=PE_SAMPLES + SE_SAMPLES)
 all_inputs += expand("results/bigwig/{sample}.rpkm.bw", sample=PE_SAMPLES + SE_SAMPLES)
 all_inputs += expand("results/macs3/{sample}/{sample}_peaks.narrowPeak", sample=PE_SAMPLES)

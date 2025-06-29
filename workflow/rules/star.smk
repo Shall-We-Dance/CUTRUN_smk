@@ -79,17 +79,45 @@ rule multimap_weight:
     shell:
         """
         samtools view -@ {threads} {input.bam} | \
-        awk '{
-            for(i=12;i<=NF;i++) {
-                if($i ~ /^NH:i:/) {
+        awk '{{
+            for(i=12;i<=NF;i++) {{
+                if($i ~ /^NH:i:/) {{
                     split($i,a,":")
                     nh=a[3]
                     break
-                }
-            }
-            if(nh) {
+                }}
+            }}
+            if(nh) {{
                 weight=1/nh
                 print $3"\t"$4-1"\t"$4+length($10)"\t.\t"weight"\t"$2
-            }   
-        }' > {output.bed} 2> {log}
+            }}
+        }}' > {output.bed} 2> {log}
+        """
+
+
+rule macs3_callpeak:
+    input:
+        bam = "results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam"
+    output:
+        narrowpeak = "results/macs3/{sample}/{sample}_peaks.narrowPeak"
+    params:
+        outdir = "results/macs3/{sample}",
+        name = "{sample}",
+        tempdir = "results/macs3/{sample}/temp",
+        gsize = config["macs_gsize"]
+    log:
+        "logs/macs3/{sample}_macs3.log"
+    conda:
+        "envs/macs3.yaml"
+    threads: 1
+    shell:
+        """
+        mkdir -p {params.tempdir}
+        macs3 callpeak -f AUTO \
+                       -t {input.bam} \
+                       -g {params.gsize} \
+                       --outdir {params.outdir} \
+                       -n {params.name} \
+                       --tempdir {params.tempdir} \
+                       --call-summits > {log} 2>&1
         """

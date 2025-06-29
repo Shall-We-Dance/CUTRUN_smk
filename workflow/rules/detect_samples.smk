@@ -37,7 +37,7 @@ def get_sample_list(config):
         raise ValueError("Invalid value for config['samples']")
     return samples
 
-def get_sample_type_map(raw_dir):
+def get_sample_type_map(raw_dir, samples=None):
     patterns_r1 = [
         "*_R1.fastq.gz", "*_1.fastq.gz", "*_R1_001.fastq.gz",
         "*_R1.fq.gz", "*_1.fq.gz", "*_R1_001.fq.gz",
@@ -45,20 +45,36 @@ def get_sample_type_map(raw_dir):
     ]
     sample_types_detected = {}
     recursive = config.get("auto_detect_subdirs", False)
-    for pattern in patterns_r1:
-        for filepath in glob.glob(os.path.join(raw_dir, "**" if recursive else "", pattern), recursive=recursive):
-            filename = os.path.basename(filepath)
-            if re.search(r"(_R2|_2|_R2_001)\.f(ast)?q\.gz$", filename):
-                continue
-            sample = re.sub(r"(_R1|_1|_R1_001)?\.f(ast)?q\.gz$", "", filename)
-            dir_path = os.path.dirname(filepath)
-            r2_patterns = [
-                f"{sample}_R2.fastq.gz", f"{sample}_2.fastq.gz", f"{sample}_R2_001.fastq.gz",
-                f"{sample}_R2.fq.gz", f"{sample}_2.fq.gz", f"{sample}_R2_001.fq.gz"
-            ]
-            has_r2 = any(
-                glob.glob(os.path.join(dir_path, r2_pat))
-                for r2_pat in r2_patterns
-            )
-            sample_types_detected[sample] = "PE" if has_r2 else "SE"
+
+    if samples is None:
+        samples = detect_samples(raw_dir)
+
+    for sample in samples:
+        # Check both SE and PE patterns
+        r1_patterns = [
+            f"{sample}_R1.fastq.gz", f"{sample}_1.fastq.gz", f"{sample}_R1_001.fastq.gz",
+            f"{sample}_R1.fq.gz", f"{sample}_1.fq.gz", f"{sample}_R1_001.fq.gz",
+            f"{sample}.fastq.gz", f"{sample}.fq.gz"
+        ]
+        r2_patterns = [
+            f"{sample}_R2.fastq.gz", f"{sample}_2.fastq.gz", f"{sample}_R2_001.fastq.gz",
+            f"{sample}_R2.fq.gz", f"{sample}_2.fq.gz", f"{sample}_R2_001.fq.gz"
+        ]
+
+        found_r1 = False
+        found_r2 = False
+        for pat in r1_patterns:
+            if glob.glob(os.path.join(raw_dir, "**" if recursive else "", pat), recursive=recursive):
+                found_r1 = True
+                break
+        for pat in r2_patterns:
+            if glob.glob(os.path.join(raw_dir, "**" if recursive else "", pat), recursive=recursive):
+                found_r2 = True
+                break
+
+        if found_r1:
+            sample_types_detected[sample] = "PE" if found_r2 else "SE"
+        else:
+            print(f"⚠️ Warning: Sample {sample} not found in {raw_dir}")
+
     return sample_types_detected

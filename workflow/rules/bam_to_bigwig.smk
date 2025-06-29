@@ -80,8 +80,8 @@ rule bam_to_bigwig_blacklist:
         bin_size = config["bw_bin_size"],
         blacklist = lambda wildcards: get_blacklist_path(config["genome"])
     output:
-        raw_bw = "results/bigwig/{sample}_blacklist.bw",
-        rpkm_bw = "results/bigwig/{sample}_blacklist.rpkm.bw"
+        raw_bw = "results/bigwig_blacklist/{sample}.bw",
+        rpkm_bw = "results/bigwig_blacklist/{sample}.rpkm.bw"
     log:
         "logs/bigwig/{sample}_blacklist.log"
     threads: config["threads"]
