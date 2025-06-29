@@ -53,6 +53,7 @@ rule star_se:
         """
         STAR --runThreadN {threads} \
              --genomeDir {params.genome} \
+             --readFilesCommand zcat \
              --readFilesIn {input.r1} \
              --outFileNamePrefix results/star/{wildcards.sample}/{wildcards.sample}_ \
              --outFilterMultimapNmax 100 \
