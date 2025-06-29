@@ -31,7 +31,6 @@ rule star_pe:
              --winAnchorMultimapNmax 100 \
              --outSAMtype BAM SortedByCoordinate \
              --outSAMunmapped Within > {log} 2>&1
-        ln -sf {output.bam} {output.link}
         samtools index -@ {threads} {output.bam}
         samtools flagstat {output.bam} > {output.metrics}
         """
@@ -64,7 +63,6 @@ rule star_se:
              --winAnchorMultimapNmax 100 \
              --outSAMtype BAM SortedByCoordinate \
              --outSAMunmapped Within > {log} 2>&1
-        ln -sf {output.bam} {output.link}
         samtools index -@ {threads} {output.bam}
         samtools flagstat {output.bam} > {output.metrics}
         """

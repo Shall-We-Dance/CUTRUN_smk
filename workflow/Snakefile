@@ -12,6 +12,7 @@ include: "rules/detect_samples.smk"
 include: "rules/fastp.smk"
 include: "rules/star.smk"
 include: "rules/bam_to_bigwig.smk"
+include: "rules/macs3.smk"
 
 SAMPLE_LIST = get_sample_list(config)
 SAMPLES = get_sample_type_map(config["raw_dir"], samples=SAMPLE_LIST)
