@@ -4,9 +4,6 @@ import os
 import hashlib
 import urllib.request
 
-def get_bam_path(sample):
-    return f"results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam"
-
 def get_blacklist_path(genome):
     """
     Download and cache ENCODE blacklist BED file for a given genome.

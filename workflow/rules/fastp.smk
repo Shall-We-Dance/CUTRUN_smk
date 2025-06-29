@@ -38,12 +38,12 @@ rule fastp_pe:
         r1 = lambda wildcards: find_pe_read_file(wildcards.sample, "1"),
         r2 = lambda wildcards: find_pe_read_file(wildcards.sample, "2")
     output:
-        r1_out = temp("results/fastp/{sample}_fastp_R1.fastq.gz"),
-        r2_out = temp("results/fastp/{sample}_fastp_R2.fastq.gz"),
+        r1_out = temp("results/fastp/{sample}_pe_fastp_R1.fastq.gz"),
+        r2_out = temp("results/fastp/{sample}_pe_fastp_R2.fastq.gz"),
         html = "results/fastp/{sample}_pe_fastp.html",
         json = "results/fastp/{sample}_pe_fastp.json"
     log:
-        "logs/fastp/{sample}.log"
+        "logs/fastp/{sample}_pe.log"
     threads: config["threads"]
     conda:
         "../envs/fastp.yaml"
@@ -59,11 +59,11 @@ rule fastp_se:
     input:
         r1 = lambda wildcards: find_se_read_file(wildcards.sample)
     output:
-        r1_out = temp("results/fastp/{sample}_fastp.fastq.gz"),
+        r1_out = temp("results/fastp/{sample}_se_fastp.fastq.gz"),
         html = "results/fastp/{sample}_se_fastp.html",
         json = "results/fastp/{sample}_se_fastp.json"
     log:
-        "logs/fastp/{sample}.log"
+        "logs/fastp/{sample}_se.log"
     threads: config["threads"]
     conda:
         "../envs/fastp.yaml"

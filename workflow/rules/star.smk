@@ -5,12 +5,13 @@ ruleorder: star_pe > star_se
 # This rule is for paired-end reads
 rule star_pe:
     input:
-        r1 = "results/fastp/{sample}_fastp_R1.fastq.gz",
-        r2 = "results/fastp/{sample}_fastp_R2.fastq.gz"
+        r1 = "results/fastp/{sample}_pe_fastp_R1.fastq.gz",
+        r2 = "results/fastp/{sample}_pe_fastp_R2.fastq.gz"
     params:
         genome = config["STAR_index"]
     output:
-        bam = "results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam",
+        bam = "results/star/{sample}/{sample}_pe_Aligned.sortedByCoord.out.bam",
+        link = "results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam",
         metrics = "results/star/{sample}/{sample}_metrics.txt"
     log:
         "logs/star/{sample}.log"
@@ -30,7 +31,7 @@ rule star_pe:
              --winAnchorMultimapNmax 100 \
              --outSAMtype BAM SortedByCoordinate \
              --outSAMunmapped Within > {log} 2>&1
-
+        ln -sf {output.bam} {output.link}
         samtools index -@ {threads} {output.bam}
         samtools flagstat {output.bam} > {output.metrics}
         """
@@ -38,11 +39,12 @@ rule star_pe:
 # This rule is for single-end reads
 rule star_se:
     input:
-        r1 = "results/fastp/{sample}_fastp.fastq.gz"
+        r1 = "results/fastp/{sample}_se_fastp.fastq.gz"
     params:
         genome = config["STAR_index"]
     output:
-        bam = "results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam",
+        bam = "results/star/{sample}/{sample}_se_Aligned.sortedByCoord.out.bam",
+        link = "results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam",
         metrics = "results/star/{sample}/{sample}_metrics.txt"
     log:
         "logs/star/{sample}.log"
@@ -62,14 +64,22 @@ rule star_se:
              --winAnchorMultimapNmax 100 \
              --outSAMtype BAM SortedByCoordinate \
              --outSAMunmapped Within > {log} 2>&1
-
+        ln -sf {output.bam} {output.link}
         samtools index -@ {threads} {output.bam}
         samtools flagstat {output.bam} > {output.metrics}
         """
 
+def get_bam_path(sample_name):
+    if sample_name in PE_SAMPLES:
+        return f"results/star/{sample_name}/{sample_name}_pe_Aligned.sortedByCoord.out.bam"
+    elif sample_name in SE_SAMPLES:
+        return f"results/star/{sample_name}/{sample_name}_se_Aligned.sortedByCoord.out.bam"
+    else:
+        raise ValueError(f"Sample {sample_name} not found in PE_SAMPLES or SE_SAMPLES.")
+
 rule multimap_weight:
     input:
-        bam = "results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam"
+        bam = lambda wildcards: get_bam_path(wildcards.sample)
     output:
         bed = "results/star/{sample}/{sample}_multimap_weight.bed"
     log:
@@ -93,32 +103,4 @@ rule multimap_weight:
                 print $3"\t"$4-1"\t"$4+length($10)"\t.\t"weight"\t"$2
             }}
         }}' > {output.bed} 2> {log}
-        """
-
-
-rule macs3_callpeak:
-    input:
-        bam = "results/star/{sample}/{sample}_Aligned.sortedByCoord.out.bam"
-    output:
-        narrowpeak = "results/macs3/{sample}/{sample}_peaks.narrowPeak"
-    params:
-        outdir = "results/macs3/{sample}",
-        name = "{sample}",
-        tempdir = "results/macs3/{sample}/temp",
-        gsize = config["macs_gsize"]
-    log:
-        "logs/macs3/{sample}_macs3.log"
-    conda:
-        "envs/macs3.yaml"
-    threads: 1
-    shell:
-        """
-        mkdir -p {params.tempdir}
-        macs3 callpeak -f AUTO \
-                       -t {input.bam} \
-                       -g {params.gsize} \
-                       --outdir {params.outdir} \
-                       -n {params.name} \
-                       --tempdir {params.tempdir} \
-                       --call-summits > {log} 2>&1
         """
