@@ -17,7 +17,9 @@ filter_blacklist: true
 # If filter_blacklist is true
 genome: "dm6"  # Options: mm10, hg19, hg38, ce10, ce11, dm3, dm6
 
-# CPU, leave empty to automatically detect
+# CPU each process, leave empty to automatically detect
+# You still need to set threads in the Snakemake command line
+# e.g. snakemake --cores 8
 threads:
 
 

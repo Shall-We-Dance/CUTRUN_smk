@@ -1,7 +1,5 @@
 # rules/star.smk
 
-ruleorder: star_pe > star_se
-
 # This rule is for paired-end reads
 rule star_pe:
     input:
