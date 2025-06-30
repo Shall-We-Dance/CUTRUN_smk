@@ -14,7 +14,7 @@ rule macs3_callpeak:
     log:
         "logs/macs3/{sample}_macs3.log"
     conda:
-        "envs/macs3.yaml"
+        "../envs/macs3.yaml"
     threads: 1
     shell:
         """
