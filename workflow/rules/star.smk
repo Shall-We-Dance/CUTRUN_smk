@@ -23,7 +23,7 @@ rule star_pe:
              --genomeDir {params.genome} \
              --readFilesCommand zcat \
              --readFilesIn {input.r1} {input.r2} \
-             --outFileNamePrefix results/star/{wildcards.sample}/{wildcards.sample}_ \
+             --outFileNamePrefix results/star/{wildcards.sample}/{wildcards.sample}_pe_ \
              --outFilterMultimapNmax 100 \
              --outSAMmultNmax 100 \
              --outSAMattributes NH HI AS nM \
@@ -56,7 +56,7 @@ rule star_se:
              --genomeDir {params.genome} \
              --readFilesCommand zcat \
              --readFilesIn {input.r1} \
-             --outFileNamePrefix results/star/{wildcards.sample}/{wildcards.sample}_ \
+             --outFileNamePrefix results/star/{wildcards.sample}/{wildcards.sample}_se_ \
              --outFilterMultimapNmax 100 \
              --outSAMmultNmax 100 \
              --outSAMattributes NH HI AS nM \
