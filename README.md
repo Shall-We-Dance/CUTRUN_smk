@@ -13,7 +13,7 @@ This repository contains a modular and scalable [Snakemake](https://github.com/s
   Automatically routes samples through the correct pipeline depending on whether data is single-end or paired-end.
 
 - ⚙️ **Flexible and Configurable**  
-  Centralized `config.yaml` to set input paths, number of threads, STAR index, genome size, bin size, and more.
+  Centralized `./config/config.yaml` to set input paths, number of threads, STAR index, genome size, bin size, and more.
 
 - 🧬 **Multimapping Handling**  
   Retains multi-mapping reads during STAR alignment, and includes a post-mapping `multimap_weight` function to adjust for `NH` tag weights (for accurate peak calling).
@@ -105,7 +105,7 @@ CUTRUN_smk/
 
 ## 📝 Notes
 
-* STAR genome index must be prebuilt.
+* STAR genome index must be prebuilt using `STAR --runMode genomeGenerate`.
 * For blacklist functionality, genome name must match those recognized by ENCODE (e.g., `hg38`, `mm10`).
 * `samtools`, `deeptools`, and other tools will auto-scale to the number of available threads (default `max/4`).
 
