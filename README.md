@@ -96,7 +96,9 @@ CUTRUN_smk/
 │   ├── star/
 │   └── bigwig/
 │
-├── .gitignore
+├── resources/                   # Resource files for each step
+│   └── blacklist/
+│
 ├── LICENSE
 └── README.md
 ```
