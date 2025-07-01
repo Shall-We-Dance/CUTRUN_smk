@@ -13,7 +13,7 @@ This repository contains a modular and scalable [Snakemake](https://github.com/s
   Automatically routes samples through the correct pipeline depending on whether data is single-end or paired-end.
 
 - ⚙️ **Flexible and Configurable**  
-  Centralized `./config/config.yaml` to set input paths, number of threads, STAR index, genome size, bin size, and more.
+  Centralized `config.yaml` to set input paths, number of threads, STAR index, genome size, bin size, and more.
 
 - 🧬 **Multimapping Handling**  
   Retains multi-mapping reads during STAR alignment, and includes a post-mapping `multimap_weight` function to adjust for `NH` tag weights (for accurate peak calling).
@@ -56,7 +56,7 @@ git clone https://github.com/Shall-We-Dance/CUTRUN_smk.git
 cd CUTRUN_smk
 ```
 
-2. Edit `config.yaml` to specify your paths and parameters.
+2. Edit `./config/config.yaml` to specify your paths and parameters.
 
 3. Activate Snakemake and run the pipeline:
 
