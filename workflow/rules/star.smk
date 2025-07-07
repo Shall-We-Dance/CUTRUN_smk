@@ -9,7 +9,8 @@ rule star_pe:
         genome = config["STAR_index"]
     output:
         bam = "results/star/{sample}/{sample}_pe_Aligned.sortedByCoord.out.bam",
-        metrics = "results/star/{sample}/{sample}_metrics.txt"
+        metrics = "results/star/{sample}/{sample}_metrics.txt",
+        multi_report = "results/star/{sample}/{sample}_multimap_report.txt"
     log:
         "logs/star/{sample}.log"
     threads: config["threads"]
@@ -22,16 +23,18 @@ rule star_pe:
              --readFilesCommand zcat \
              --readFilesIn {input.r1} {input.r2} \
              --outFileNamePrefix results/star/{wildcards.sample}/{wildcards.sample}_pe_ \
-             --outFilterMultimapNmax 100 \
-             --outSAMmultNmax 100 \
+             --outFilterMultimapNmax 20 \
+             --outSAMmultNmax 1 \
+             --outSAMprimaryFlag AllBestScore \
              --outSAMattributes NH HI AS nM \
-             --winAnchorMultimapNmax 100 \
+             --winAnchorMultimapNmax 20 \
              --outSAMtype BAM SortedByCoordinate \
              --outSAMunmapped Within > {log} 2>&1
         echo "Running samtools index for {wildcards.sample}..." >> {log} 2>&1
         samtools index -@ {threads} {output.bam} >> {log} 2>&1
         echo "Running samtools flagstat for {wildcards.sample}..." >> {log} 2>&1
         samtools flagstat {output.bam} > {output.metrics} 2>> {log}
+        samtools view {output.bam} | awk '{{for(i=12;i<=NF;i++) if($i ~ /^NH:i:/){{split($i,a,":"); print a[3]}}}}' | sort | uniq -c > {output.multi_report} 2>> {log}
         """
 
 # This rule is for single-end reads
@@ -42,7 +45,8 @@ rule star_se:
         genome = config["STAR_index"]
     output:
         bam = "results/star/{sample}/{sample}_se_Aligned.sortedByCoord.out.bam",
-        metrics = "results/star/{sample}/{sample}_metrics.txt"
+        metrics = "results/star/{sample}/{sample}_metrics.txt",
+        multi_report = "results/star/{sample}/{sample}_multimap_report.txt"
     log:
         "logs/star/{sample}.log"
     threads: config["threads"]
@@ -55,16 +59,18 @@ rule star_se:
              --readFilesCommand zcat \
              --readFilesIn {input.r1} \
              --outFileNamePrefix results/star/{wildcards.sample}/{wildcards.sample}_se_ \
-             --outFilterMultimapNmax 100 \
-             --outSAMmultNmax 100 \
+             --outFilterMultimapNmax 10 \
+             --outSAMmultNmax 1 \
+             --outSAMprimaryFlag AllBestScore \
              --outSAMattributes NH HI AS nM \
-             --winAnchorMultimapNmax 100 \
+             --winAnchorMultimapNmax 20 \
              --outSAMtype BAM SortedByCoordinate \
              --outSAMunmapped Within > {log} 2>&1
         echo "Running samtools index for {wildcards.sample}..." >> {log} 2>&1
         samtools index -@ {threads} {output.bam} >> {log} 2>&1
         echo "Running samtools flagstat for {wildcards.sample}..." >> {log} 2>&1
-        samtools flagstat {output.bam} > {output.metrics} 2>> {log}
+        samtools flagstat {output.bam} >> {output.metrics} 2>> {log}
+        samtools view {output.bam} | awk '{{for(i=12;i<=NF;i++) if($i ~ /^NH:i:/){{split($i,a,":"); print a[3]}}}}' | sort | uniq -c > {output.multi_report} 2>> {log}
         """
 
 def get_bam_path(sample_name):

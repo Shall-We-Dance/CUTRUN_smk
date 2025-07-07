@@ -4,6 +4,7 @@
 raw_dir: "/path/to/raw_data" 
 # Leave this empty if you want to automatically detect samples, or use samples: "all"
 samples:
+  - all
 
 auto_detect_subdirs: true
 
@@ -17,14 +18,18 @@ filter_blacklist: true
 # If filter_blacklist is true
 genome: "dm6"  # Options: mm10, hg19, hg38, ce10, ce11, dm3, dm6
 
-# CPU each process, leave empty to automatically detect
+# CPU threads for each process (if multi-thread available), leave empty to automatically detect
 # You still need to set threads in the Snakemake command line
 # e.g. snakemake --cores 8
 threads:
 
 
+## Peak calling
+
 # Genome size for MACS3 
 macs_gsize: "dm" # Options: dm, hs, mm, ce, 2.9e9 ...
+macs_qvalue: 1e-10  # q-value threshold for MACS3 peak calling, default is 0.01
+macs_extsize: 200  # Fragment size for MACS3 peak calling, default is 150
 
 # Bin size for bigwig
 bw_bin_size: 10
