@@ -31,6 +31,8 @@ all_inputs += expand("results/star/{sample}/{sample}_se_Aligned.sortedByCoord.ou
 all_inputs += expand("results/star/{sample}/{sample}_multimap_weight.bed", sample=PE_SAMPLES + SE_SAMPLES)
 if config.get("filter_blacklist", True):
     all_inputs += expand("results/bigwig_blacklist/{sample}.bw", sample=PE_SAMPLES + SE_SAMPLES)
+    all_inputs += expand("results/macs3/{sample}/{sample}_peaks_filtered.narrowPeak", sample=PE_SAMPLES + SE_SAMPLES)
+    all_inputs += expand("results/macs3/{sample}/{sample}_summits_filtered.bed", sample=PE_SAMPLES + SE_SAMPLES)
 all_inputs += expand("results/bigwig/{sample}.bw", sample=PE_SAMPLES + SE_SAMPLES)
 all_inputs += expand("results/macs3/{sample}/{sample}_peaks.xls", sample=PE_SAMPLES + SE_SAMPLES)
 

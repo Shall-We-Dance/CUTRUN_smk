@@ -12,7 +12,9 @@ rule macs3_callpeak_unique:
     input:
         bam = lambda wildcards: get_bam_path(wildcards.sample)
     output:
-        macs3_xls = "results/macs3/{sample}/{sample}_peaks.xls"
+        macs3_xls = "results/macs3/{sample}/{sample}_peaks.xls",
+        narrow_peaks = "results/macs3/{sample}/{sample}_peaks.narrowPeak",
+        summits = "results/macs3/{sample}/{sample}_summits.bed"
     params:
         outdir = "results/macs3/{sample}",
         name = "{sample}",
@@ -42,4 +44,23 @@ rule macs3_callpeak_unique:
                        --tempdir {params.tempdir} \
                        --call-summits > {log} 2>&1
         rm -rf {params.tempdir}
+        echo "MACS3 peak calling completed for {wildcards.sample}." >> {log}
+        """
+
+rule macs3_filter_peaks:
+    input:
+        narrow_peaks = "results/macs3/{sample}/{sample}_peaks.narrowPeak",
+        summits = "results/macs3/{sample}/{sample}_summits.bed"
+    output:
+        filtered_peaks = "results/macs3/{sample}/{sample}_peaks_filtered.narrowPeak",
+        filtered_summits = "results/macs3/{sample}/{sample}_summits_filtered.bed"
+    params:
+        blacklist = lambda wildcards: get_blacklist_path(config["genome"])
+    log:
+        "logs/macs3/{sample}_macs3_filter.log"
+    shell:
+        """
+        bedtools intersect -v -a {input.summits} -b {params.blacklist} -nonamecheck > {output.filtered_summits}
+        bedtools intersect -v -a {input.narrow_peaks} -b {params.blacklist} -nonamecheck > {output.filtered_peaks}
+        echo "Filtered peaks and summits saved to {output.filtered_peaks} and {output.filtered_summits}." >> {log}
         """
