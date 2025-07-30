@@ -23,11 +23,11 @@ rule star_pe:
              --readFilesCommand zcat \
              --readFilesIn {input.r1} {input.r2} \
              --outFileNamePrefix results/star/{wildcards.sample}/{wildcards.sample}_pe_ \
-             --outFilterMultimapNmax 20 \
+             --outFilterMultimapNmax 1 \
              --outSAMmultNmax 1 \
              --outSAMprimaryFlag AllBestScore \
              --outSAMattributes NH HI AS nM \
-             --winAnchorMultimapNmax 20 \
+             --winAnchorMultimapNmax 1 \
              --outSAMtype BAM SortedByCoordinate \
              --outSAMunmapped Within > {log} 2>&1
         echo "Running samtools index for {wildcards.sample}..." >> {log} 2>&1
@@ -59,11 +59,11 @@ rule star_se:
              --readFilesCommand zcat \
              --readFilesIn {input.r1} \
              --outFileNamePrefix results/star/{wildcards.sample}/{wildcards.sample}_se_ \
-             --outFilterMultimapNmax 10 \
+             --outFilterMultimapNmax 1 \
              --outSAMmultNmax 1 \
              --outSAMprimaryFlag AllBestScore \
              --outSAMattributes NH HI AS nM \
-             --winAnchorMultimapNmax 20 \
+             --winAnchorMultimapNmax 1 \
              --outSAMtype BAM SortedByCoordinate \
              --outSAMunmapped Within > {log} 2>&1
         echo "Running samtools index for {wildcards.sample}..." >> {log} 2>&1
