@@ -40,3 +40,11 @@ rule bwa_se:
         samtools view -bS - | \
         samtools sort -o {output.bam} -
         """
+
+def get_bam_path(sample_name):
+    if sample_name in PE_SAMPLES:
+        return f"results/bwa/{sample_name}/{sample_name}_pe.bam"
+    elif sample_name in SE_SAMPLES:
+        return f"results/bwa/{sample_name}/{sample_name}_se.bam"
+    else:
+        raise ValueError(f"Sample {sample_name} not found in PE_SAMPLES or SE_SAMPLES.")

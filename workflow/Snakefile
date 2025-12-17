@@ -10,7 +10,7 @@ if not config.get("threads"):
     
 include: "rules/detect_samples.smk"
 include: "rules/fastp.smk"
-include: "rules/star.smk"
+include: "rules/bowtie2.smk"
 include: "rules/bam_to_bigwig.smk"
 include: "rules/macs3.smk"
 
@@ -26,9 +26,8 @@ SE_SAMPLES = [s for s, t in SAMPLES.items() if t == "SE"]
 all_inputs = []
 all_inputs += expand("results/fastp/{sample}_pe_fastp.html", sample=PE_SAMPLES)
 all_inputs += expand("results/fastp/{sample}_se_fastp.html", sample=SE_SAMPLES)
-all_inputs += expand("results/star/{sample}/{sample}_pe_Aligned.sortedByCoord.out.bam", sample=PE_SAMPLES)
-all_inputs += expand("results/star/{sample}/{sample}_se_Aligned.sortedByCoord.out.bam", sample=SE_SAMPLES)
-all_inputs += expand("results/star/{sample}/{sample}_multimap_weight.bed", sample=PE_SAMPLES + SE_SAMPLES)
+all_inputs += expand("results/bowtie2/{sample}/{sample}_pe.bam", sample=PE_SAMPLES)
+all_inputs += expand("results/bowtie2/{sample}/{sample}_se.bam", sample=SE_SAMPLES)
 if config.get("filter_blacklist", True):
     all_inputs += expand("results/bigwig_blacklist/{sample}.bw", sample=PE_SAMPLES + SE_SAMPLES)
     all_inputs += expand("results/macs3/{sample}/{sample}_peaks_filtered.narrowPeak", sample=PE_SAMPLES + SE_SAMPLES)

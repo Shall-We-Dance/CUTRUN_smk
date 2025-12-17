@@ -9,9 +9,8 @@ samples:
 auto_detect_subdirs: true
 
 
-# Mapping tool
-mapper: "STAR"  # Options: STAR, [bwa, bowtie2, HISAT2][coming soon]
-STAR_index: "/path/to/STAR/index"
+# Mapping tool: bowtie2
+bowtie2_index: "/path/to/bowtie2/index"
 chrom_sizes: "/path/to/chrom.sizes"
 
 filter_blacklist: true
