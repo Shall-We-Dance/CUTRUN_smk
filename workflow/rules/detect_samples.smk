@@ -5,13 +5,12 @@ import re
 import glob
 from snakemake.io import glob_wildcards
 
-def detect_samples(raw_dir):
+def detect_samples(raw_dir, recursive=False):
     patterns = [
         "*_R1.fastq.gz", "*_1.fastq.gz", "*_R1_001.fastq.gz",
         "*_R1.fq.gz", "*_1.fq.gz", "*_R1_001.fq.gz",
         "*.fastq.gz", "*.fq.gz"
     ]
-    recursive = config.get("auto_detect_subdirs", False)
     sample_set = set()
     for pattern in patterns:
         for filepath in glob.glob(os.path.join(raw_dir, "**" if recursive else "", pattern), recursive=recursive):
