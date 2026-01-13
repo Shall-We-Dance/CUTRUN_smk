@@ -29,6 +29,7 @@ threads:
 macs_gsize: "dm" # Options: dm, hs, mm, ce, 2.9e9 ...
 macs_qvalue: 1e-10  # q-value threshold for MACS3 peak calling, default is 0.01
 macs_extsize: 200  # Fragment size for MACS3 peak calling, default is 150
+macs_keep_dup: 1
 
 # Bin size for bigwig
 bw_bin_size: 10

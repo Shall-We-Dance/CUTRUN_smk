@@ -24,14 +24,17 @@ PE_SAMPLES = [s for s, t in SAMPLES.items() if t == "PE"]
 SE_SAMPLES = [s for s, t in SAMPLES.items() if t == "SE"]
 
 all_inputs = []
+# Fastp outputs
 all_inputs += expand("results/fastp/{sample}_pe_fastp.html", sample=PE_SAMPLES)
 all_inputs += expand("results/fastp/{sample}_se_fastp.html", sample=SE_SAMPLES)
+# Bowtie2 BAMs
 all_inputs += expand("results/bowtie2/{sample}/{sample}_pe.bam", sample=PE_SAMPLES)
 all_inputs += expand("results/bowtie2/{sample}/{sample}_se.bam", sample=SE_SAMPLES)
 if config.get("filter_blacklist", True):
-    all_inputs += expand("results/bigwig_blacklist/{sample}.bw", sample=PE_SAMPLES + SE_SAMPLES)
-    all_inputs += expand("results/macs3/{sample}/{sample}_peaks_filtered.narrowPeak", sample=PE_SAMPLES + SE_SAMPLES)
-    all_inputs += expand("results/macs3/{sample}/{sample}_summits_filtered.bed", sample=PE_SAMPLES + SE_SAMPLES)
+    all_inputs += expand("results/bowtie2/{sample}/{sample}.filtered.bam", sample=PE_SAMPLES)
+    all_inputs += expand("results/bigwig/{sample}.filtered.bw", sample=PE_SAMPLES + SE_SAMPLES)
+    all_inputs += expand("results/macs3/{sample}/{sample}.filtered_peaks.narrowPeak", sample=PE_SAMPLES + SE_SAMPLES)
+    all_inputs += expand("results/macs3/{sample}/{sample}.filtered_summits.bed", sample=PE_SAMPLES + SE_SAMPLES)
 all_inputs += expand("results/bigwig/{sample}.bw", sample=PE_SAMPLES + SE_SAMPLES)
 all_inputs += expand("results/macs3/{sample}/{sample}_peaks.xls", sample=PE_SAMPLES + SE_SAMPLES)
 
