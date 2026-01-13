@@ -3,6 +3,8 @@
 import os
 import hashlib
 import urllib.request
+import gzip
+import shutil
 
 def get_blacklist_path(genome):
     """
@@ -24,12 +26,19 @@ def get_blacklist_path(genome):
     os.makedirs(cache_dir, exist_ok=True)
 
     url = url_dict[genome]
-    fname = os.path.join(cache_dir, os.path.basename(url))
+    gz_path = os.path.join(cache_dir, os.path.basename(url))
+    bed_path = gz_path.replace(".gz", "")
 
-    if not os.path.exists(fname):
-        print(f"Downloading blacklist for {genome}...")
-        urllib.request.urlretrieve(url, fname)
-    return fname
+    if not os.path.exists(bed_path):
+        if not os.path.exists(gz_path):
+            print(f"Downloading blacklist for {genome}...")
+            urllib.request.urlretrieve(url, gz_path)
+
+        print(f"Unzipping blacklist for {genome}...")
+        with gzip.open(gz_path, "rb") as f_in, open(bed_path, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+
+    return bed_path
 
 rule bam_to_bigwig:
     input:
