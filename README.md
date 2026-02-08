@@ -1,4 +1,4 @@
-# CUT&RUN/CUT&Tag/ChIP-seq Snakemake Pipeline (Bowtie2 + Fastp)
+# CUT&RUN/CUT&Tag/ChIP-seq Snakemake Pipeline
 
 This repository provides a modular Snakemake workflow for paired-end CUT&RUN/CUT&Tag/ChIP-seq upstream processing. The pipeline focuses on QC, alignment, optional blacklist filtering, optional duplicate removal, and bigWig generation.
 
