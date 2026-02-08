@@ -103,12 +103,12 @@ rule fastp_sample_report_only:
 # ----------------------------
 # MultiQC summary
 #   Use --force to avoid _1 suffix when outputs already exist.
-#   Limit scanning scope to QC + STAR outputs for performance/stability.
+#   Limit scanning scope to QC + logs for performance/stability.
 # ----------------------------
 rule multiqc:
     input:
         expand(f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.html", sample=list(config["samples"].keys())),
-        expand(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.Log.final.out", sample=list(config["samples"].keys()))
+        expand("logs/bowtie2/{sample}_pe.log", sample=list(config["samples"].keys()))
     output:
         html=f"{OUTDIR}/qc/multiqc/multiqc_report.html"
     log:
@@ -120,5 +120,5 @@ rule multiqc:
         r"""
         set -euo pipefail
         mkdir -p $(dirname {output.html}) $(dirname {log})
-        multiqc --force -o {OUTDIR}/qc/multiqc {OUTDIR}/qc {OUTDIR}/bowtie2 > {log} 2>&1
+        multiqc --force -o {OUTDIR}/qc/multiqc {OUTDIR}/qc logs > {log} 2>&1
         """

@@ -3,24 +3,25 @@
 rule bam_to_bigwig:
     """Generate bigWig coverage tracks from raw BAM files."""
     input:
-        bam = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.filtered.dedup.bam",
-        bai = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.filtered.dedup.bam.bai"
+        bam = lambda wc: final_bam_path(wc.sample),
+        bai = lambda wc: final_bai_path(wc.sample)
     params:
-        chrom_sizes = config["chrom_sizes"],
+        chrom_sizes = config["reference"]["chrom_sizes"],
         bin_size = config.get("bigwig", {}).get("bin_size", 10),
         normalization = config.get("bigwig", {}).get("normalization", "RPKM"),
-        exclude_flags = config.get("bigwig", {}).get("samtools_exclude_flags", 1804)
+        exclude_flags = config.get("samtools_exclude_flags", 1804)
     output:
-        raw_bw = f"{OUTDIR}/bigwig/{{sample}}.bw",
-        norm_bw = f"{OUTDIR}/bigwig/{{sample}}.{{norm}}.bw"
+        raw_bw = f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.raw.bw",
+        norm_bw = f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.normalized.bw"
     log:
         f"logs/bigwig/{{sample}}.bamCoverage.log"
     threads: int(config["threads"]["deeptools"])
     conda:
-        "../envs/deeptools.yaml"
+        "envs/deeptools.yaml"
     shell:
         """
         GENOME_SIZE=$(awk '{{sum += $2}} END {{print sum}}' {params.chrom_sizes})
+        mkdir -p $(dirname {output.raw_bw})
         
         # Unnormalized coverage
         bamCoverage \
@@ -46,4 +47,3 @@ rule bam_to_bigwig:
             --effectiveGenomeSize $GENOME_SIZE \
             >> {log} 2>&1
         """
-
