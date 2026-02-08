@@ -1,7 +1,62 @@
 # workflow/rules/common.smk
 import os
 
-OUTDIR = config["output"]["dir"]
+OUTDIR = config.get("output", {}).get("dir", "results")
+SAMPLES = list(config.get("samples", {}).keys())
+
+FILTER_BLACKLIST = bool(config.get("filter_blacklist", False))
+REMOVE_DUPLICATES = bool(config.get("remove_duplicates", True))
+
+
+def blacklist_config():
+    return config.get("blacklist", {})
+
+
+def blacklist_path():
+    blacklist = blacklist_config()
+    if blacklist.get("path"):
+        return blacklist["path"]
+    if blacklist.get("url"):
+        cache_dir = blacklist.get("cache_dir", "resources/blacklist")
+        filename = os.path.basename(blacklist["url"])
+        if filename.endswith(".gz"):
+            filename = filename[:-3]
+        return os.path.join(cache_dir, filename)
+    return None
+
+
+def unique_bam_path(sample):
+    return f"{OUTDIR}/bowtie2/{sample}/{sample}.unique.bam"
+
+
+def filtered_bam_path(sample):
+    return f"{OUTDIR}/bowtie2/{sample}/{sample}.unique.filtered.bam"
+
+
+def dedup_bam_path(sample):
+    suffix = "unique.filtered" if FILTER_BLACKLIST else "unique"
+    return f"{OUTDIR}/bowtie2/{sample}/{sample}.{suffix}.dedup.bam"
+
+
+def final_bam_path(sample):
+    if REMOVE_DUPLICATES:
+        return dedup_bam_path(sample)
+    if FILTER_BLACKLIST:
+        return filtered_bam_path(sample)
+    return unique_bam_path(sample)
+
+
+def final_bai_path(sample):
+    return final_bam_path(sample) + ".bai"
+
+
+def validate_blacklist_config():
+    if not FILTER_BLACKLIST:
+        return
+    if not blacklist_path():
+        raise ValueError(
+            "filter_blacklist is enabled but no blacklist.path or blacklist.url is set."
+        )
 
 rule faidx_reference:
     input:
@@ -14,10 +69,13 @@ rule faidx_reference:
     shell:
         "samtools faidx {input.fa}"
 
-rule get_blacklist:
-    output:
-        bed=f"{config['blacklist']['cache_dir']}/{config['genome']}-blacklist.bed"
-    conda:
-        "envs/py_signal.yaml"
-    script:
-        "scripts/get_blacklist.py"
+validate_blacklist_config()
+
+if FILTER_BLACKLIST and blacklist_config().get("url"):
+    rule get_blacklist:
+        output:
+            bed=blacklist_path()
+        conda:
+            "envs/samtools.yaml"
+        script:
+            "rules/scripts/get_blacklist.py"

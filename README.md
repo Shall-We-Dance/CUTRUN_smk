@@ -1,118 +1,97 @@
-# Snakemake Workflow for CUT&RUN Upstream Analysis
+# CUT&RUN/CUT&Tag/ChIP-seq Snakemake Pipeline (Bowtie2 + Fastp)
 
-[![run with conda](http://img.shields.io/badge/run%20with-conda-3EB049?labelColor=000000&logo=anaconda)](https://docs.conda.io/en/latest/)
+This repository provides a modular Snakemake workflow for paired-end CUT&RUN/CUT&Tag/ChIP-seq upstream processing. The pipeline focuses on QC, alignment, optional blacklist filtering, optional duplicate removal, and bigWig generation.
 
-This repository contains a modular and scalable [Snakemake](https://github.com/snakemake/snakemake) workflow for analyzing CUT&RUN (or ChIP-seq) data.
+## Features
 
-## ✨ Features
+- **Per-lane fastp QC + sample-level reports**
+- **Bowtie2 alignment with unique-mapper filtering**
+- **Optional ENCODE/Boyle-Lab (or custom) blacklist filtering**
+- **Optional PCR duplicate removal (Picard or samtools)**
+- **Raw + normalized bigWig outputs**
+- **MACS3 peak calling (optional)**
+- **MultiQC summary report**
 
-- 🧠 **Automatic Sample Detection**  
-  Supports various naming conventions including `_R1.fastq.gz`, `_1.fastq.gz`, `.fastq.gz`, `_R1_001.fastq.gz`, etc.
-
-- 🔁 **SE/PE Mode Auto-Detection**  
-  Automatically routes samples through the correct pipeline depending on whether data is single-end or paired-end.
-
-- ⚙️ **Flexible and Configurable**  
-  Centralized `config.yaml` to set input paths, number of threads, STAR index, genome size, bin size, and more.
-
-- 🧬 **Multimapping Handling**  
-  Retains multi-mapping reads during STAR alignment, and includes a post-mapping `multimap_weight` function to adjust for `NH` tag weights (for accurate peak calling).
-
-- 🚫 **Blacklist Filtering (Optional)**  
-  When `filter_blacklist: true` is set in `config.yaml`, ENCODE blacklist regions will be automatically downloaded (based on genome) and applied to `bamCoverage` using `--blackListFileName`. This step replaces the older repeat masking logic.
-
-- 📊 **BigWig Generation with Normalization**  
-  Converts BAM to bigWig using `deeptools` with and without normalization (e.g., RPKM), while excluding PCR duplicates (`--samFlagExclude 1024`).
-
-## 🧬 Workflow Overview
-
-1. **Sample Detection**  
-   Automatically detects sample names based on filenames.
-
-2. **Quality Trimming**  
-   Uses `fastp` to trim adapters and remove low-quality reads.
-
-3. **Alignment**  
-   Aligns reads to the reference genome using `STAR`, retaining up to 100 multi-mapped hits.
-
-4. **Multimap Weighting**  
-   Applies fractional weighting to multi-mapped reads based on their `NH` tag values.
-
-5. **Blacklist Filtering (Optional)**  
-   Filters signal from known artefact regions via ENCODE blacklist when `filter_blacklist` is enabled.
-
-6. **BigWig Conversion**  
-   Generates normalized (`RPKM`) and unnormalized bigWig files for visualization.
-
-7. **Peak Calling**  
-   Uses `MACS3` to call peaks from the aligned BAM files. 
-
-## 🚀 Quick Start
-
-1. Clone the repository:
+## Quick Start
 
 ```bash
 git clone https://github.com/Shall-We-Dance/CUTRUN_smk.git
 cd CUTRUN_smk
-```
 
-2. Edit `./config/config.yaml` to specify your paths and parameters.
-
-3. Activate Snakemake and run the pipeline:
-
-```bash
+# edit config.yaml
 snakemake --use-conda --cores 16
 ```
 
-## 📁 Project Structure
+## Configuration (`config.yaml`)
+
+Key sections:
+
+- **`reference`**: bowtie2 index, chromosome sizes, fasta.
+- **`samples`**: paired-end FASTQ lists per sample.
+- **`filter_blacklist`**: enable/disable blacklist filtering.
+- **`blacklist`**: manual input for blacklist files.
+- **`remove_duplicates`**: enable/disable PCR duplicate removal.
+- **`bigwig`**: bin size + normalization.
+- **`output.dir`**: output directory (default `results`).
+- **`macs`**: MACS3 peak calling parameters.
+- **`run_macs3`**: toggle MACS3 peak calling (default `true`).
+
+### Blacklist (Manual Input)
+
+Blacklist files are **manual**. You can either:
+
+1. **Use a local file**
+   ```yaml
+   blacklist:
+     path: "/path/to/custom.blacklist.bed"
+   ```
+
+2. **Download from a URL**
+   ```yaml
+   blacklist:
+     url: "https://raw.githubusercontent.com/Boyle-Lab/Blacklist/master/lists/dm6-blacklist.v2.bed.gz"
+     cache_dir: "resources/blacklist"
+   ```
+
+Reference repositories:
+- https://github.com/Boyle-Lab/Blacklist
+- https://github.com/Boyle-Lab/Blacklist/tree/master/lists
+
+## Workflow Steps
+
+1. **fastp QC per lane** → unit-level HTML/JSON reports
+2. **Merge lanes** → per-sample FASTQs
+3. **Sample-level fastp report-only** → merged HTML/JSON
+4. **Bowtie2 alignment**
+5. **Unique mapper filtering**
+6. **Optional blacklist filtering**
+7. **Optional duplicate removal**
+8. **BigWig generation** (raw + normalized)
+9. **MACS3 peak calling** (optional)
+10. **MultiQC report**
+
+## Outputs (default `results/`)
 
 ```
-CUTRUN_smk/
-├── config/
-│   └── config.yaml              # Main configuration file
-│
-├── workflow/
-│   ├── Snakefile                # Entry point Snakefile
-│   ├── rules/                   # Modular rule files
-│   │   ├── fastp.smk
-│   │   ├── star.smk
-│   │   ├── macs3.smk
-│   │   ├── bam_to_bigwig.smk
-│   │   └── detect_samples.smk
-│   └── envs/                    # Conda environments
-│       ├── fastp.yaml
-│       ├── star.yaml
-│       ├── macs3.yaml
-│       ├── bedtools.yaml
-│       └── deeptools.yaml
-│
-├── results/                     # Final and intermediate output files
+results/
+├── qc/
 │   ├── fastp/
-│   ├── star/
-│   └── bigwig/
-│
-├── logs/                        # Log files for each step
-│   ├── fastp/
-│   ├── star/
-│   └── bigwig/
-│
-├── resources/                   # Resource files for each step
-│   └── blacklist/
-│
-├── LICENSE
-└── README.md
+│   └── multiqc/
+├── bowtie2/
+│   └── <sample>/<sample>.<suffix>.bam
+├── macs3/
+│   └── <sample>/<sample>_peaks.narrowPeak
+└── bigwig/
+    └── <sample>/<sample>.raw.bw
+    └── <sample>/<sample>.normalized.bw
 ```
 
-## 📝 Notes
+## Notes
 
-* STAR genome index must be prebuilt using `STAR --runMode genomeGenerate`.
-* For blacklist functionality, genome name must match those recognized by ENCODE (e.g., `hg38`, `mm10`).
-* `samtools`, `deeptools`, and other tools will auto-scale to the number of available threads (default `max/4`).
+- The pipeline currently expects **paired-end** samples.
+- When `filter_blacklist: true`, you must provide **either** `blacklist.path` **or** `blacklist.url`.
+- MultiQC scans `results/qc` and `logs/` by default.
 
 ## License
 
 MIT License
-
-## Contact
-
-For questions, issues, or contributions, please open an issue or pull request on GitHub.

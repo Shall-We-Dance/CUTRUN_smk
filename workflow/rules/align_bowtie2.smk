@@ -1,9 +1,6 @@
 # rules/bowtie2.smk
 
 import os
-import urllib.request
-import gzip
-import shutil
 
 # ----------------------------------------------------------------------------
 # Alignment Rules
@@ -24,7 +21,7 @@ rule bowtie2_pe:
         "logs/bowtie2/{sample}_pe.log"
     threads: int(config["threads"]["bowtie2"])
     conda:
-        "../envs/bowtie2.yaml"
+        "envs/bowtie2.yaml"
     shell:
         """
         mkdir -p $(dirname {output.bam})
@@ -60,8 +57,8 @@ rule filter_unique_mappers:
     input:
         bam = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}_pe.bam"
     output:
-        bam = temp(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.bam"),
-        bai = temp(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.bam.bai")
+        bam = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.bam",
+        bai = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.bam.bai"
     params:
         mapq = config.get("bowtie2", {}).get("mapq_threshold", 30),
         exclude_flags = config.get("samtools_exclude_flags", 1804)
@@ -69,7 +66,7 @@ rule filter_unique_mappers:
         f"logs/bowtie2/{{sample}}.unique.log"
     threads: int(config["threads"]["samtools"])
     conda:
-        "../envs/bowtie2.yaml"
+        "envs/bowtie2.yaml"
     shell:
         """
         # Filter for unique mappers: MAPQ >= {params.mapq}
@@ -87,74 +84,75 @@ rule filter_unique_mappers:
         samtools flagstat {output.bam} >> {log}
         """
 
+if FILTER_BLACKLIST:
+    rule filter_blacklist_bam:
+        """
+        Remove reads overlapping blacklist regions.
+        """
+        input:
+            bam = unique_bam_path("{sample}"),
+            blacklist = blacklist_path()
+        output:
+            bam = filtered_bam_path("{sample}"),
+            bai = filtered_bam_path("{sample}") + ".bai"
+        params:
+            nonamecheck = "--nonamecheck" if config.get("bedtools_nonamecheck", True) else ""
+        threads: int(config["threads"]["samtools"])
+        log:
+            "logs/bowtie2/{sample}.filter_blacklist.log"
+        conda:
+            "envs/bowtie2.yaml"
+        shell:
+            """
+            # Remove blacklist regions
+            bedtools intersect -v \
+                -abam {input.bam} \
+                -b {input.blacklist} \
+                {params.nonamecheck} | \
+            samtools sort -@ {threads} -o {output.bam} -
+            
+            samtools index -@ {threads} {output.bam}
+            
+            # Log filtering statistics
+            echo "Input BAM:" > {log}
+            samtools flagstat {input.bam} >> {log}
+            echo -e "\nAfter blacklist filtering:" >> {log}
+            samtools flagstat {output.bam} >> {log}
+            """
 
-rule filter_blacklist_bam:
-    """
-    Remove reads overlapping ENCODE blacklist regions.
-    """
-    input:
-        bam = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.bam"
-    output:
-        bam = temp(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.filtered.bam"),
-        bai = temp(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.filtered.bam.bai")
-    params:
-        blacklist = lambda wc: get_blacklist_path(config["genome"]),
-        nonamecheck = "--nonamecheck" if config.get("bedtools_nonamecheck", True) else ""
-    threads: int(config["threads"]["samtools"])
-    log:
-        "logs/bowtie2/{sample}.filter_blacklist.log"
-    conda:
-        "../envs/bowtie2.yaml"
-    shell:
-        """
-        # Remove blacklist regions
-        bedtools intersect -v \
-            -abam {input.bam} \
-            -b {params.blacklist} \
-            {params.nonamecheck} | \
-        samtools sort -@ {threads} -o {output.bam} -
-        
-        samtools index -@ {threads} {output.bam}
-        
-        # Log filtering statistics
-        echo "Input BAM:" > {log}
-        samtools flagstat {input.bam} >> {log}
-        echo -e "\nAfter blacklist filtering:" >> {log}
-        samtools flagstat {output.bam} >> {log}
-        """
 
-
-rule remove_duplicates:
-    """
-    Remove PCR duplicates using Picard or samtools.
-    """
-    input:
-        bam = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.filtered.bam"
-    output:
-        bam = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.filtered.dedup.bam",
-        bai = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.filtered.dedup.bam.bai",
-        metrics = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.dedup_metrics.txt"
-    params:
-        method = config.get("dedup_method", "picard")
-    threads: config["threads"]
-    log:
-        "logs/bowtie2/{sample}.dedup.log"
-    conda:
-        "../envs/bowtie2.yaml"
-    shell:
+if REMOVE_DUPLICATES:
+    rule remove_duplicates:
         """
-        if [ "{params.method}" == "picard" ]; then
-            picard MarkDuplicates \
-                I={input.bam} \
-                O={output.bam} \
-                M={output.metrics} \
-                REMOVE_DUPLICATES=true \
-                VALIDATION_STRINGENCY=LENIENT \
-                2> {log}
-        else
-            samtools markdup -r -@ {threads} {input.bam} {output.bam} 2> {log}
-            samtools flagstat {output.bam} > {output.metrics}
-        fi
-        
-        samtools index -@ {threads} {output.bam}
+        Remove PCR duplicates using Picard or samtools.
         """
+        input:
+            bam = lambda wc: filtered_bam_path(wc.sample) if FILTER_BLACKLIST else unique_bam_path(wc.sample)
+        output:
+            bam = dedup_bam_path("{sample}"),
+            bai = dedup_bam_path("{sample}") + ".bai",
+            metrics = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.dedup_metrics.txt"
+        params:
+            method = config.get("dedup_method", "picard")
+        threads: int(config["threads"]["samtools"])
+        log:
+            "logs/bowtie2/{sample}.dedup.log"
+        conda:
+            "envs/bowtie2.yaml"
+        shell:
+            """
+            if [ "{params.method}" == "picard" ]; then
+                picard MarkDuplicates \
+                    I={input.bam} \
+                    O={output.bam} \
+                    M={output.metrics} \
+                    REMOVE_DUPLICATES=true \
+                    VALIDATION_STRINGENCY=LENIENT \
+                    2> {log}
+            else
+                samtools markdup -r -@ {threads} {input.bam} {output.bam} 2> {log}
+                samtools flagstat {output.bam} > {output.metrics}
+            fi
+            
+            samtools index -@ {threads} {output.bam}
+            """

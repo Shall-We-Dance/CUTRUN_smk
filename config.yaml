@@ -1,5 +1,5 @@
 # workflow/config.yaml
-genome: dm6   # must be one of: mm10, mm39, hg19, hg38, ce10, ce11, dm3, dm6
+genome: dm6   # genome label for reporting/logging
 
 threads:
   fastp: 8
@@ -13,10 +13,28 @@ reference:
   chrom_sizes: "/path/to/genome/dm6.chrom.sizes"
   fasta: "/path/to/genome.fa"
 
-# Blacklist (will be auto-downloaded and cached)
+# Blacklist (manual)
+# Boyle-Lab blacklist repository (examples):
+#   https://github.com/Boyle-Lab/Blacklist
+#   https://github.com/Boyle-Lab/Blacklist/tree/master/lists
 blacklist:
-  genome: dm6 
   cache_dir: "resources/blacklist"
+  # Provide exactly one of the following:
+  # path: "/path/to/custom.blacklist.bed"
+  # url: "https://raw.githubusercontent.com/Boyle-Lab/Blacklist/master/lists/dm6-blacklist.v2.bed.gz"
+
+# Enable blacklist filtering (requires blacklist.path or blacklist.url)
+filter_blacklist: true
+
+# Remove PCR duplicates
+remove_duplicates: true
+dedup_method: "picard"  # Options: picard, samtools
+
+# Samtools filtering flags
+samtools_exclude_flags: 1804  # exclude unmapped, not primary, fails QC, duplicate
+
+# Bedtools parameters for blacklist filtering
+bedtools_nonamecheck: true  # Skip chromosome name checking
 
 # Samples: multiple technical replicates (or lanes) under one sample
 samples:
@@ -53,13 +71,19 @@ bowtie2:
 output:
   dir: "results"
 
+# Generate summary reports
+generate_multiqc: true
+
+# Run MACS3 peak calling
+run_macs3: true
+
 # Peak Calling (MACS3)
 macs:
   gsize: "dm"  # Effective genome size: hs, mm, ce, dm
   qvalue: 0.05  # Q-value cutoff
   extsize: 200  # Fragment extension size
   broad: false  # Set true for broad peak calling (H3K27me3, etc.)
-  broad_cutoff: 0.1  # Broad peak cutoff (only used if macs_broad=true)
+  broad_cutoff: 0.1  # Broad peak cutoff (only used if macs.broad=true)
 
 # ----------------------------------------------------------------------------
 # BigWig Generation

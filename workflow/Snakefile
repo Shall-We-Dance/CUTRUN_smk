@@ -2,7 +2,7 @@ import os
 from snakemake.utils import min_version
 min_version("9.3.3")
 
-configfile: "config/config.yaml"
+configfile: "config.yaml"
 
 include: "rules/common.smk"
 include: "rules/qc_fastp.smk"
@@ -10,38 +10,27 @@ include: "rules/align_bowtie2.smk"
 include: "rules/bam_to_bigwig.smk"
 include: "rules/macs3.smk"
 
+MULTIQC_TARGET = (
+    f"{OUTDIR}/qc/multiqc/multiqc_report.html"
+    if config.get("generate_multiqc", True)
+    else None
+)
+
+ALL_TARGETS = []
+ALL_TARGETS += expand(f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.html", sample=SAMPLES)
+ALL_TARGETS += expand(f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.json", sample=SAMPLES)
+if MULTIQC_TARGET:
+    ALL_TARGETS.append(MULTIQC_TARGET)
+ALL_TARGETS += [final_bam_path(sample) for sample in SAMPLES]
+ALL_TARGETS += [final_bai_path(sample) for sample in SAMPLES]
+ALL_TARGETS += expand(f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.raw.bw", sample=SAMPLES)
+ALL_TARGETS += expand(f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.normalized.bw", sample=SAMPLES)
+if config.get("run_macs3", True):
+    ALL_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_peaks.narrowPeak", sample=SAMPLES)
+    ALL_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_summits.bed", sample=SAMPLES)
+    ALL_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_peaks.xls", sample=SAMPLES)
+
 rule all:
     input:
-        # QC
-        expand(f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.html", sample=SAMPLES),
-        expand(f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.json", sample=SAMPLES),
-        f"{OUTDIR}/qc/multiqc/multiqc_report.html",
+        ALL_TARGETS
 
-        # Alignment (final BAM kept)
-        expand(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.filtered.dedup.bam", sample=SAMPLES),
-        expand(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.filtered.dedup.bam.bai", sample=SAMPLES),
-
-        # BigWig from BAM (coverage, CPM), with/without blacklist
-        expand(f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.bamCPM.noblacklist.bw", sample=SAMPLES),
-        expand(f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.bamCPM.blacklist.bw", sample=SAMPLES),
-
-        # 5' end signal BigWig (Read2 first base, 1bp), with/without blacklist
-        expand(f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.R2firstbaseCPM.noblacklist.bw", sample=SAMPLES),
-        FINAL_5P_BW_BLACKLIST,
-
-        # Track files
-        expand(f"{OUTDIR}/tracks/{{sample}}/{{sample}}.tracks.txt", sample=SAMPLES),
-
-        # Cleanup sentinel
-        f"{OUTDIR}/.tmp_cleanup.done"
-
-
-
-rule clean_temp:
-    """Remove temporary files only."""
-    shell:
-        """
-        find results/fastp -name "*.fastq.gz" -delete
-        find results/bowtie2 -name "*.bam" ! -name "*.filtered.bam" ! -name "*.dedup.bam" -delete
-        echo "Temporary files removed."
-        """
