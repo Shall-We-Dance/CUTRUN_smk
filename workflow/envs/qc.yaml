@@ -1,0 +1,6 @@
+name: qc
+channels: [conda-forge, bioconda]
+dependencies:
+  - fastp
+  - deeptools
+  - samtools

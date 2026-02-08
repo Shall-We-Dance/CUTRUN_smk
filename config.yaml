@@ -1,0 +1,74 @@
+# workflow/config.yaml
+genome: dm6   # must be one of: mm10, mm39, hg19, hg38, ce10, ce11, dm3, dm6
+
+threads:
+  fastp: 8
+  bowtie2: 16
+  samtools: 8
+  deeptools: 8
+
+# Reference & index
+reference:
+  bowtie2_index: "/path/to/genome/bowtie2/dm6"
+  chrom_sizes: "/path/to/genome/dm6.chrom.sizes"
+  fasta: "/path/to/genome.fa"
+
+# Blacklist (will be auto-downloaded and cached)
+blacklist:
+  genome: dm6 
+  cache_dir: "resources/blacklist"
+
+# Samples: multiple technical replicates (or lanes) under one sample
+samples:
+  sampleA:
+    R1:
+      - "raw/sampleA_L001_R1.fastq.gz"
+      - "raw/sampleA_L002_R1.fastq.gz"
+    R2:
+      - "raw/sampleA_L001_R2.fastq.gz"
+      - "raw/sampleA_L002_R2.fastq.gz"
+
+  sampleB:
+    R1:
+      - "raw/sampleB_R1.fastq.gz"
+    R2:
+      - "raw/sampleB_R2.fastq.gz"
+
+# fastp settings
+fastp:
+  # QC + Illumina adapter trimming + dedup
+  dedup_adapter:
+    enable: true
+    dedup: true
+
+# bowtie2 alignment settings
+bowtie2:
+  max_insert_size: 500
+  mode: "very-sensitive"  # Options: very-fast, fast, sensitive, very-sensitive
+  keep_multimappers: false  # Set to true to keep multi-mapped reads
+  mapq_threshold: 30  # Minimum MAPQ score for unique mapping
+  extra: ""  # optional additional args
+
+# Output naming
+output:
+  dir: "results"
+
+# Peak Calling (MACS3)
+macs:
+  gsize: "dm"  # Effective genome size: hs, mm, ce, dm
+  qvalue: 0.05  # Q-value cutoff
+  extsize: 200  # Fragment extension size
+  broad: false  # Set true for broad peak calling (H3K27me3, etc.)
+  broad_cutoff: 0.1  # Broad peak cutoff (only used if macs_broad=true)
+
+# ----------------------------------------------------------------------------
+# BigWig Generation
+# ----------------------------------------------------------------------------
+bigwig:
+  bin_size: 10  # Bin size for coverage tracks
+  normalization: "RPKM"  # Options: RPKM, CPM, BPM, RPGC, None
+  samtools_exclude_flags: 1804  # Default: exclude unmapped, secondary, QC fail, duplicates
+
+# Generate both normalized and unnormalized bigWig files
+generate_raw_bigwig: true
+generate_normalized_bigwig: true

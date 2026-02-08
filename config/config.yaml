@@ -1,35 +1,97 @@
-# config.yaml
+# ============================================================================
+# CUT&RUN/CUT&Tag/ChIP-seq Analysis Pipeline Configuration
+# ============================================================================
 
-# Sample information
-raw_dir: "/path/to/raw_data" 
-# Leave this empty if you want to automatically detect samples, or use samples: "all"
-samples:
-  - all
+threads: 8  # Number of threads (auto-detected if not specified)
 
-auto_detect_subdirs: true
+# ----------------------------------------------------------------------------
+# Sample Detection
+# ----------------------------------------------------------------------------
+# Samples to process:
+#   - "all": auto-detect all samples in raw_dir
+#   - list: ["sample1", "sample2", ...]
+#   - string: "sample1"
+samples: "all"
 
+# Directory containing raw FASTQ files
+raw_dir: "data/raw"
 
-# Mapping tool: bowtie2
-bowtie2_index: "/path/to/bowtie2/index"
-chrom_sizes: "/path/to/chrom.sizes"
+# Auto-detect samples in subdirectories
+auto_detect_subdirs: false
 
+# ----------------------------------------------------------------------------
+# Reference Genome
+# ----------------------------------------------------------------------------
+genome: "dm6"  # Options: hg38, hg19, mm10, mm39, ce11, dm6, etc.
+
+# Genome index paths (update based on your system)
+bowtie2_index: "/path/to/genome/bowtie2/dm6"
+
+# Chromosome sizes file
+chrom_sizes: "/path/to/genome/dm6.chrom.sizes"
+
+# ----------------------------------------------------------------------------
+# Alignment Parameters
+# ----------------------------------------------------------------------------
+
+# Bowtie2 specific parameters
+bowtie2:
+  max_insert_size: 500
+  mode: "very-sensitive"  # Options: very-fast, fast, sensitive, very-sensitive
+  keep_multimappers: false  # Set to true to keep multi-mapped reads
+  mapq_threshold: 30  # Minimum MAPQ score for unique mapping
+
+# ----------------------------------------------------------------------------
+# Quality Control & Filtering
+# ----------------------------------------------------------------------------
+# Fastp parameters
+fastp:
+  qualified_quality_phred: 20
+  length_required: 36
+  cut_mean_quality: 20
+
+# Filter blacklist regions
 filter_blacklist: true
-# If filter_blacklist is true
-genome: "dm6"  # Options: mm10, hg19, hg38, ce10, ce11, dm3, dm6
 
-# CPU threads for each process (if multi-thread available), leave empty to automatically detect
-# You still need to set threads in the Snakemake command line
-# e.g. snakemake --cores 8
-threads:
+# Remove duplicates
+remove_duplicates: true
+dedup_method: "picard"  # Options: picard, samtools
 
+# ----------------------------------------------------------------------------
+# Peak Calling (MACS3)
+# ----------------------------------------------------------------------------
+macs_gsize: "dm"  # Effective genome size: hs, mm, ce, dm
+macs_qvalue: 0.05  # Q-value cutoff
+macs_extsize: 200  # Fragment extension size
+macs_broad: false  # Set true for broad peak calling (H3K27me3, etc.)
+macs_broad_cutoff: 0.1  # Broad peak cutoff (only used if macs_broad=true)
 
-## Peak calling
+# ----------------------------------------------------------------------------
+# BigWig Generation
+# ----------------------------------------------------------------------------
+bw_bin_size: 10  # Bin size for coverage tracks
+bw_normalization: "RPKM"  # Options: RPKM, CPM, BPM, RPGC, None
 
-# Genome size for MACS3 
-macs_gsize: "dm" # Options: dm, hs, mm, ce, 2.9e9 ...
-macs_qvalue: 1e-10  # q-value threshold for MACS3 peak calling, default is 0.01
-macs_extsize: 200  # Fragment size for MACS3 peak calling, default is 150
-macs_keep_dup: 1
+# Generate both normalized and unnormalized bigWig files
+generate_raw_bigwig: true
+generate_normalized_bigwig: true
 
-# Bin size for bigwig
-bw_bin_size: 10
+# ----------------------------------------------------------------------------
+# Output Options
+# ----------------------------------------------------------------------------
+# Keep intermediate files
+keep_fastp_fastq: false  # Keep trimmed FASTQ files
+keep_unsorted_bam: false  # Keep unsorted BAM files
+
+# Generate summary reports
+generate_multiqc: true
+
+# ----------------------------------------------------------------------------
+# Advanced Options
+# ----------------------------------------------------------------------------
+# Additional samtools filtering flags
+samtools_exclude_flags: 1804  # Exclude: unmapped, not primary, fails QC, duplicate
+samtools_include_flags: 0
+
+# Bedtools parameters for blacklist filtering
+bedtools_nonamecheck: true  # Skip chromosome name checking

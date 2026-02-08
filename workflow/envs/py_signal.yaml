@@ -1,0 +1,6 @@
+name: py_signal
+channels: [conda-forge, bioconda]
+dependencies:
+  - python=3.11
+  - pysam
+  - pybigwig

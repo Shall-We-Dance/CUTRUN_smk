@@ -1,8 +1,7 @@
-name: star
+name: multiqc
 channels:
   - bioconda
   - conda-forge
 dependencies:
-  - star
-  - samtools
-  - bedtools
+  - multiqc
+  - python>=3.8

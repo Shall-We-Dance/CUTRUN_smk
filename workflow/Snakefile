@@ -2,41 +2,46 @@ import os
 from snakemake.utils import min_version
 min_version("9.3.3")
 
-# Config
 configfile: "config/config.yaml"
 
-if not config.get("threads"):
-    config["threads"] = max(4, os.cpu_count() // 4)
-    
-include: "rules/detect_samples.smk"
-include: "rules/fastp.smk"
-include: "rules/bowtie2.smk"
+include: "rules/common.smk"
+include: "rules/qc_fastp.smk"
+include: "rules/align_bowtie2.smk"
 include: "rules/bam_to_bigwig.smk"
 include: "rules/macs3.smk"
 
-SAMPLE_LIST = get_sample_list(config)
-SAMPLES = get_sample_type_map(config["raw_dir"], samples=SAMPLE_LIST)
-print("\n[SAMPLE TYPE DETECTION]")
-for sample, s_type in SAMPLES.items():
-    print(f"  - {sample}: {s_type}")
-
-PE_SAMPLES = [s for s, t in SAMPLES.items() if t == "PE"]
-SE_SAMPLES = [s for s, t in SAMPLES.items() if t == "SE"]
-
-all_inputs = []
-# Fastp outputs
-all_inputs += expand("results/fastp/{sample}_pe_fastp.html", sample=PE_SAMPLES)
-all_inputs += expand("results/fastp/{sample}_se_fastp.html", sample=SE_SAMPLES)
-# Bowtie2 BAMs
-all_inputs += expand("results/bowtie2/{sample}/{sample}_pe.bam", sample=PE_SAMPLES)
-all_inputs += expand("results/bowtie2/{sample}/{sample}_se.bam", sample=SE_SAMPLES)
-if config.get("filter_blacklist", True):
-    all_inputs += expand("results/bowtie2/{sample}/{sample}.filtered.bam", sample=PE_SAMPLES)
-    all_inputs += expand("results/bigwig/{sample}.filtered.bw", sample=PE_SAMPLES + SE_SAMPLES)
-    all_inputs += expand("results/macs3/{sample}/{sample}.filtered_peaks.narrowPeak", sample=PE_SAMPLES + SE_SAMPLES)
-    all_inputs += expand("results/macs3/{sample}/{sample}.filtered_summits.bed", sample=PE_SAMPLES + SE_SAMPLES)
-all_inputs += expand("results/bigwig/{sample}.bw", sample=PE_SAMPLES + SE_SAMPLES)
-all_inputs += expand("results/macs3/{sample}/{sample}_peaks.xls", sample=PE_SAMPLES + SE_SAMPLES)
-
 rule all:
-    input: all_inputs
+    input:
+        # QC
+        expand(f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.html", sample=SAMPLES),
+        expand(f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.json", sample=SAMPLES),
+        f"{OUTDIR}/qc/multiqc/multiqc_report.html",
+
+        # Alignment (final BAM kept)
+        expand(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.filtered.dedup.bam", sample=SAMPLES),
+        expand(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.filtered.dedup.bam.bai", sample=SAMPLES),
+
+        # BigWig from BAM (coverage, CPM), with/without blacklist
+        expand(f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.bamCPM.noblacklist.bw", sample=SAMPLES),
+        expand(f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.bamCPM.blacklist.bw", sample=SAMPLES),
+
+        # 5' end signal BigWig (Read2 first base, 1bp), with/without blacklist
+        expand(f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.R2firstbaseCPM.noblacklist.bw", sample=SAMPLES),
+        FINAL_5P_BW_BLACKLIST,
+
+        # Track files
+        expand(f"{OUTDIR}/tracks/{{sample}}/{{sample}}.tracks.txt", sample=SAMPLES),
+
+        # Cleanup sentinel
+        f"{OUTDIR}/.tmp_cleanup.done"
+
+
+
+rule clean_temp:
+    """Remove temporary files only."""
+    shell:
+        """
+        find results/fastp -name "*.fastq.gz" -delete
+        find results/bowtie2 -name "*.bam" ! -name "*.filtered.bam" ! -name "*.dedup.bam" -delete
+        echo "Temporary files removed."
+        """
