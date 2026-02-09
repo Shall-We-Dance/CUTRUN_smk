@@ -78,4 +78,4 @@ if FILTER_BLACKLIST and blacklist_config().get("url"):
         conda:
             "envs/samtools.yaml"
         script:
-            "rules/scripts/get_blacklist.py"
+            "scripts/get_blacklist.py"
