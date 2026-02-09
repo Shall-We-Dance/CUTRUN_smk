@@ -6,43 +6,76 @@ import os
 # Alignment Rules
 # ----------------------------------------------------------------------------
 
-rule bowtie2_pe:
-    input:
-        r1=f"{OUTDIR}/tmp/fastp_sample/{{sample}}_R1.fastq.gz",
-        r2=f"{OUTDIR}/tmp/fastp_sample/{{sample}}_R2.fastq.gz"
-    params:
-        index=config["reference"]["bowtie2_index"],
-        max_insert = config.get("bowtie2", {}).get("max_insert_size", 500),
-        mode = config.get("bowtie2", {}).get("mode", "very-sensitive")
-    output:
-        bam = temp(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}_pe.bam"),
-        bai = temp(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}_pe.bam.bai")
-    log:
-        "logs/bowtie2/{sample}_pe.log"
-    threads: int(config["threads"]["bowtie2"])
-    conda:
-        "envs/bowtie2.yaml"
-    shell:
-        """
-        mkdir -p $(dirname {output.bam})
-        bowtie2 \
-            -x {params.index} \
-            -1 {input.r1} \
-            -2 {input.r2} \
-            --end-to-end \
-            --{params.mode} \
-            -X {params.max_insert} \
-            --no-mixed \
-            --no-discordant \
-            -p {threads} 2> {log} | \
-        samtools view -bS - | \
-        samtools sort -@ {threads} -o {output.bam} -
-        
-        echo "Running samtools index for {wildcards.sample}..." >> {log} 2>&1
-        samtools index -@ {threads} {output.bam} >> {log} 2>&1
-        # bowtie2 writes:
-        # {OUTDIR}/tmp/bowtie2/
-        """
+if not is_single_end():
+    rule bowtie2_pe:
+        input:
+            r1=f"{OUTDIR}/tmp/fastp_sample/{{sample}}_R1.fastq.gz",
+            r2=f"{OUTDIR}/tmp/fastp_sample/{{sample}}_R2.fastq.gz"
+        params:
+            index=config["reference"]["bowtie2_index"],
+            max_insert = config.get("bowtie2", {}).get("max_insert_size", 500),
+            mode = config.get("bowtie2", {}).get("mode", "very-sensitive")
+        output:
+            bam = temp(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}_pe.bam"),
+            bai = temp(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}_pe.bam.bai")
+        log:
+            "logs/bowtie2/{sample}_pe.log"
+        threads: int(config["threads"]["bowtie2"])
+        conda:
+            "envs/bowtie2.yaml"
+        shell:
+            """
+            mkdir -p $(dirname {output.bam})
+            bowtie2 \
+                -x {params.index} \
+                -1 {input.r1} \
+                -2 {input.r2} \
+                --end-to-end \
+                --{params.mode} \
+                -X {params.max_insert} \
+                --no-mixed \
+                --no-discordant \
+                -p {threads} 2> {log} | \
+            samtools view -bS - | \
+            samtools sort -@ {threads} -o {output.bam} -
+            
+            echo "Running samtools index for {wildcards.sample}..." >> {log} 2>&1
+            samtools index -@ {threads} {output.bam} >> {log} 2>&1
+            # bowtie2 writes:
+            # {OUTDIR}/tmp/bowtie2/
+            """
+else:
+    rule bowtie2_se:
+        input:
+            r1=f"{OUTDIR}/tmp/fastp_sample/{{sample}}_R1.fastq.gz"
+        params:
+            index=config["reference"]["bowtie2_index"],
+            mode = config.get("bowtie2", {}).get("mode", "very-sensitive")
+        output:
+            bam = temp(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}_se.bam"),
+            bai = temp(f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}_se.bam.bai")
+        log:
+            "logs/bowtie2/{sample}_se.log"
+        threads: int(config["threads"]["bowtie2"])
+        conda:
+            "envs/bowtie2.yaml"
+        shell:
+            """
+            mkdir -p $(dirname {output.bam})
+            bowtie2 \
+                -x {params.index} \
+                -U {input.r1} \
+                --end-to-end \
+                --{params.mode} \
+                -p {threads} 2> {log} | \
+            samtools view -bS - | \
+            samtools sort -@ {threads} -o {output.bam} -
+            
+            echo "Running samtools index for {wildcards.sample}..." >> {log} 2>&1
+            samtools index -@ {threads} {output.bam} >> {log} 2>&1
+            # bowtie2 writes:
+            # {OUTDIR}/tmp/bowtie2/
+            """
 
 
 # ----------------------------------------------------------------------------
@@ -55,7 +88,7 @@ rule filter_unique_mappers:
     This removes multi-mapped reads.
     """
     input:
-        bam = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}_pe.bam"
+        bam = lambda wc: aligned_bam_path(wc.sample)
     output:
         bam = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.bam",
         bai = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.unique.bam.bai"
