@@ -152,7 +152,9 @@ if REMOVE_DUPLICATES:
             bai = dedup_bam_path("{sample}") + ".bai",
             metrics = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.dedup_metrics.txt"
         params:
-            method = config.get("dedup_method", "picard")
+            method = config.get("dedup_method", "picard"),
+            picard_java_opts = config.get("picard_java_opts", "-Xmx4g"),
+            picard_tmpdir = config.get("picard_tmpdir", f"{OUTDIR}/tmp/picard")
         threads: int(config["threads"]["samtools"])
         log:
             "logs/bowtie2/{sample}.dedup.log"
@@ -160,18 +162,26 @@ if REMOVE_DUPLICATES:
             "envs/bowtie2.yaml"
         shell:
             """
+            mkdir -p $(dirname {output.bam}) "{params.picard_tmpdir}"
             if [ "{params.method}" == "picard" ]; then
-                picard MarkDuplicates \
-                    I={input.bam} \
-                    O={output.bam} \
-                    M={output.metrics} \
-                    REMOVE_DUPLICATES=true \
-                    VALIDATION_STRINGENCY=LENIENT \
-                    2> {log}
+                if ! command -v picard >/dev/null 2>&1; then
+                    echo "picard not found in PATH; falling back to samtools markdup." > {log}
+                    samtools markdup -r -@ {threads} {input.bam} {output.bam} 2>> {log}
+                    samtools flagstat {output.bam} > {output.metrics}
+                else
+                    picard --java-options "{params.picard_java_opts}" MarkDuplicates \
+                        I={input.bam} \
+                        O={output.bam} \
+                        M={output.metrics} \
+                        TMP_DIR={params.picard_tmpdir} \
+                        REMOVE_DUPLICATES=true \
+                        VALIDATION_STRINGENCY=LENIENT \
+                        2> {log}
+                fi
             else
                 samtools markdup -r -@ {threads} {input.bam} {output.bam} 2> {log}
                 samtools flagstat {output.bam} > {output.metrics}
             fi
-            
+
             samtools index -@ {threads} {output.bam}
             """
