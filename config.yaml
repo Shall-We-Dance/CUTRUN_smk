@@ -54,6 +54,7 @@ samples:
       - "raw/sampleB_R1.fastq.gz"
     R2:
       - "raw/sampleB_R2.fastq.gz"
+  # For SE (single-end) input, provide only R1 entries per sample (omit R2).
 
 # fastp settings
 fastp:
