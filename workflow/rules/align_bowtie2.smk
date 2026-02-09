@@ -104,18 +104,27 @@ if FILTER_BLACKLIST:
             "envs/bowtie2.yaml"
         shell:
             """
-            # Remove blacklist regions
-            bedtools intersect -v \
-                -abam {input.bam} \
-                -b {input.blacklist} \
-                {params.nonamecheck} | \
-            samtools sort -@ {threads} -o {output.bam} -
-            
-            samtools index -@ {threads} {output.bam}
-            
             # Log filtering statistics
             echo "Input BAM:" > {log}
             samtools flagstat {input.bam} >> {log}
+
+            if [ ! -s "{input.blacklist}" ]; then
+                echo -e "\nBlacklist BED is missing or empty; skipping blacklist filtering." >> {log}
+                samtools view -b -@ {threads} {input.bam} -o {output.bam}
+            else
+                tmp_bam="$(mktemp --suffix=.bam)"
+                # Remove blacklist regions
+                bedtools intersect -v \
+                    -abam {input.bam} \
+                    -b {input.blacklist} \
+                    {params.nonamecheck} 2>> {log} | \
+                samtools sort -@ {threads} -o "$tmp_bam" - 2>> {log}
+
+                mv "$tmp_bam" {output.bam}
+            fi
+
+            samtools index -@ {threads} {output.bam} 2>> {log}
+
             echo -e "\nAfter blacklist filtering:" >> {log}
             samtools flagstat {output.bam} >> {log}
             """
