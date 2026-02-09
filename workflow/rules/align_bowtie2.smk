@@ -114,6 +114,17 @@ if FILTER_BLACKLIST:
             else
                 tmp_bam="$(mktemp --suffix=.bam)"
                 # Remove blacklist regions
+                if bedtools intersect -v \
+                    -abam {input.bam} \
+                    -b {input.blacklist} \
+                    {params.nonamecheck} 2>> {log} | \
+                samtools sort -@ {threads} -o "$tmp_bam" - 2>> {log}; then
+                    mv "$tmp_bam" {output.bam}
+                else
+                    echo -e "\nBlacklist filtering failed; passing through input BAM." >> {log}
+                    rm -f "$tmp_bam"
+                    samtools view -b -@ {threads} {input.bam} -o {output.bam}
+                fi
                 bedtools intersect -v \
                     -abam {input.bam} \
                     -b {input.blacklist} \
