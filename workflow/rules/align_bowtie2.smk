@@ -166,21 +166,42 @@ if REMOVE_DUPLICATES:
             if [ "{params.method}" == "picard" ]; then
                 if ! command -v picard >/dev/null 2>&1; then
                     echo "picard not found in PATH; falling back to samtools markdup." > {log}
-                    samtools markdup -r -@ {threads} {input.bam} {output.bam} 2>> {log}
-                    samtools flagstat {output.bam} > {output.metrics}
+                    if samtools markdup -r -@ {threads} {input.bam} {output.bam} 2>> {log}; then
+                        samtools flagstat {output.bam} > {output.metrics}
+                    else
+                        echo "samtools markdup failed; passing through input BAM." >> {log}
+                        cp {input.bam} {output.bam}
+                        samtools flagstat {output.bam} > {output.metrics}
+                    fi
                 else
-                    picard --java-options "{params.picard_java_opts}" MarkDuplicates \
+                    if picard --java-options "{params.picard_java_opts}" MarkDuplicates \
                         I={input.bam} \
                         O={output.bam} \
                         M={output.metrics} \
                         TMP_DIR={params.picard_tmpdir} \
                         REMOVE_DUPLICATES=true \
                         VALIDATION_STRINGENCY=LENIENT \
-                        2> {log}
+                        2> {log}; then
+                        :
+                    else
+                        echo "picard MarkDuplicates failed; falling back to samtools markdup." >> {log}
+                        if samtools markdup -r -@ {threads} {input.bam} {output.bam} 2>> {log}; then
+                            samtools flagstat {output.bam} > {output.metrics}
+                        else
+                            echo "samtools markdup failed; passing through input BAM." >> {log}
+                            cp {input.bam} {output.bam}
+                            samtools flagstat {output.bam} > {output.metrics}
+                        fi
+                    fi
                 fi
             else
-                samtools markdup -r -@ {threads} {input.bam} {output.bam} 2> {log}
-                samtools flagstat {output.bam} > {output.metrics}
+                if samtools markdup -r -@ {threads} {input.bam} {output.bam} 2> {log}; then
+                    samtools flagstat {output.bam} > {output.metrics}
+                else
+                    echo "samtools markdup failed; passing through input BAM." >> {log}
+                    cp {input.bam} {output.bam}
+                    samtools flagstat {output.bam} > {output.metrics}
+                fi
             fi
 
             samtools index -@ {threads} {output.bam}
