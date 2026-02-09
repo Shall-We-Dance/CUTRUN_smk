@@ -125,6 +125,13 @@ if FILTER_BLACKLIST:
                     rm -f "$tmp_bam"
                     samtools view -b -@ {threads} {input.bam} -o {output.bam}
                 fi
+                bedtools intersect -v \
+                    -abam {input.bam} \
+                    -b {input.blacklist} \
+                    {params.nonamecheck} 2>> {log} | \
+                samtools sort -@ {threads} -o "$tmp_bam" - 2>> {log}
+
+                mv "$tmp_bam" {output.bam}
             fi
 
             samtools index -@ {threads} {output.bam} 2>> {log}
