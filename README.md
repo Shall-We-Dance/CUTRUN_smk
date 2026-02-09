@@ -1,6 +1,6 @@
 # CUT&RUN/CUT&Tag/ChIP-seq Snakemake Pipeline
 
-This repository provides a modular Snakemake workflow for paired-end CUT&RUN/CUT&Tag/ChIP-seq upstream processing. The pipeline focuses on QC, alignment, optional blacklist filtering, optional duplicate removal, and bigWig generation.
+This repository provides a modular Snakemake workflow for paired-end and single-end CUT&RUN/CUT&Tag/ChIP-seq upstream processing. The pipeline focuses on QC, alignment, optional blacklist filtering, optional duplicate removal, and bigWig generation.
 
 ## Features
 
@@ -27,7 +27,8 @@ snakemake --use-conda --cores 16
 Key sections:
 
 - **`reference`**: bowtie2 index, chromosome sizes, fasta.
-- **`samples`**: paired-end FASTQ lists per sample.
+- **`read_type`**: set to `PE` (paired-end, default) or `SE` (single-end).
+- **`samples`**: FASTQ lists per sample. For `SE`, provide only `R1` entries.
 - **`filter_blacklist`**: enable/disable blacklist filtering.
 - **`blacklist`**: manual input for blacklist files.
 - **`remove_duplicates`**: enable/disable PCR duplicate removal.
@@ -88,7 +89,7 @@ results/
 
 ## Notes
 
-- The pipeline currently expects **paired-end** samples.
+- The pipeline supports both **paired-end** (`read_type: PE`) and **single-end** (`read_type: SE`) samples.
 - When `filter_blacklist: true`, you must provide **either** `blacklist.path` **or** `blacklist.url`.
 - MultiQC scans `results/qc` and `logs/` by default.
 

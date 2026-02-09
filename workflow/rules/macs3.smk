@@ -14,6 +14,7 @@ rule macs3_callpeak:
         gsize = config["macs"]["gsize"],
         qvalue = config["macs"]["qvalue"],
         extsize = config["macs"]["extsize"],
+        fmt = "BAM" if is_single_end() else "BAMPE",
         broad = "--broad --broad-cutoff " + str(config["macs"].get("broad_cutoff", 0.1))
                 if config["macs"].get("broad", False) else ""
     log:
@@ -26,7 +27,7 @@ rule macs3_callpeak:
         mkdir -p {params.outdir}
         macs3 callpeak \
             -t {input.bam} \
-            -f BAMPE \
+            -f {params.fmt} \
             -g {params.gsize} \
             -n {params.name} \
             --outdir {params.outdir} \

@@ -1,6 +1,9 @@
 # workflow/config.yaml
 genome: dm6   # genome label for reporting/logging
 
+# Read type: PE (paired-end) or SE (single-end)
+read_type: "PE"
+
 threads:
   fastp: 8
   bowtie2: 16

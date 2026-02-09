@@ -3,6 +3,7 @@ import os
 
 OUTDIR = config.get("output", {}).get("dir", "results")
 SAMPLES = list(config.get("samples", {}).keys())
+READ_TYPE = config.get("read_type", "PE").upper()
 
 FILTER_BLACKLIST = bool(config.get("filter_blacklist", False))
 REMOVE_DUPLICATES = bool(config.get("remove_duplicates", True))
@@ -49,6 +50,18 @@ def final_bam_path(sample):
 def final_bai_path(sample):
     return final_bam_path(sample) + ".bai"
 
+def is_single_end():
+    return READ_TYPE == "SE"
+
+
+def aligned_bam_path(sample):
+    suffix = "se" if is_single_end() else "pe"
+    return f"{OUTDIR}/bowtie2/{sample}/{sample}_{suffix}.bam"
+
+
+def bowtie2_log_path(sample):
+    suffix = "se" if is_single_end() else "pe"
+    return f"logs/bowtie2/{sample}_{suffix}.log"
 
 def validate_blacklist_config():
     if not FILTER_BLACKLIST:
