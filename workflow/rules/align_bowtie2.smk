@@ -96,7 +96,7 @@ if FILTER_BLACKLIST:
             bam = filtered_bam_path("{sample}"),
             bai = filtered_bam_path("{sample}") + ".bai"
         params:
-            nonamecheck = "--nonamecheck" if config.get("bedtools_nonamecheck", True) else ""
+            nonamecheck = config.get("bedtools_nonamecheck", True)
         threads: int(config["threads"]["samtools"])
         log:
             "logs/bowtie2/{sample}.filter_blacklist.log"
@@ -108,6 +108,12 @@ if FILTER_BLACKLIST:
             echo "Input BAM:" > {log}
             samtools flagstat {input.bam} >> {log}
 
+            nonamecheck_opt=""
+            if [ "{params.nonamecheck}" = "True" ] && \
+                bedtools intersect -h 2>&1 | grep -q -- '--nonamecheck'; then
+                nonamecheck_opt="--nonamecheck"
+            fi
+
             if [ ! -s "{input.blacklist}" ]; then
                 echo -e "\nBlacklist BED is missing or empty; skipping blacklist filtering." >> {log}
                 samtools view -b -@ {threads} {input.bam} -o {output.bam}
@@ -117,7 +123,7 @@ if FILTER_BLACKLIST:
                 if bedtools intersect -v \
                     -abam {input.bam} \
                     -b {input.blacklist} \
-                    {params.nonamecheck} 2>> {log} | \
+                    $nonamecheck_opt 2>> {log} | \
                 samtools sort -@ {threads} -o "$tmp_bam" - 2>> {log}; then
                     mv "$tmp_bam" {output.bam}
                 else
@@ -125,13 +131,6 @@ if FILTER_BLACKLIST:
                     rm -f "$tmp_bam"
                     samtools view -b -@ {threads} {input.bam} -o {output.bam}
                 fi
-                bedtools intersect -v \
-                    -abam {input.bam} \
-                    -b {input.blacklist} \
-                    {params.nonamecheck} 2>> {log} | \
-                samtools sort -@ {threads} -o "$tmp_bam" - 2>> {log}
-
-                mv "$tmp_bam" {output.bam}
             fi
 
             samtools index -@ {threads} {output.bam} 2>> {log}
