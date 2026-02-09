@@ -4,5 +4,6 @@ channels:
   - conda-forge
 dependencies:
   - bowtie2
+  - picard
   - samtools
   - bedtools
