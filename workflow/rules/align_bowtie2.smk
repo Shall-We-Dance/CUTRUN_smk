@@ -195,8 +195,7 @@ if REMOVE_DUPLICATES:
             flagstat = dedup_flagstat_path("{sample}")
         params:
             method = config.get("dedup_method", "picard"),
-            picard_java_opts = config.get("picard_java_opts", "-Xmx4g"),
-            picard_tmpdir = PICARD_TMPDIR
+            picard_java_opts = config.get("picard_java_opts", "-Xmx4g")
         threads: int(config["threads"]["samtools"])
         log:
             "logs/bowtie2/{sample}.dedup.log"
@@ -204,7 +203,9 @@ if REMOVE_DUPLICATES:
             "envs/bowtie2.yaml"
         shell:
             """
-            mkdir -p $(dirname {output.bam}) "{params.picard_tmpdir}" $(dirname {output.flagstat})
+            mkdir -p $(dirname {output.bam}) $(dirname {output.flagstat})
+            picard_tmpdir="$(mktemp -d)"
+            trap 'rm -rf "$picard_tmpdir"' EXIT
             if [ "{params.method}" == "picard" ]; then
                 if ! command -v picard >/dev/null 2>&1; then
                     echo "picard not found in PATH; falling back to samtools markdup." > {log}
@@ -220,7 +221,7 @@ if REMOVE_DUPLICATES:
                         I={input.bam} \
                         O={output.bam} \
                         M={output.metrics} \
-                        TMP_DIR={params.picard_tmpdir} \
+                        TMP_DIR="$picard_tmpdir" \
                         REMOVE_DUPLICATES=true \
                         VALIDATION_STRINGENCY=LENIENT \
                         2> {log}; then
