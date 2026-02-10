@@ -182,8 +182,9 @@ else:
 # ----------------------------
 rule multiqc:
     input:
-        expand(f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.html", sample=list(config["samples"].keys())),
-        [bowtie2_log_path(sample) for sample in list(config["samples"].keys())]
+        expand(f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.html", sample=SAMPLES),
+        [bowtie2_log_path(sample) for sample in SAMPLES],
+        [path for sample in SAMPLES for path in bam_flagstat_paths(sample)]
     output:
         html=f"{OUTDIR}/qc/multiqc/multiqc_report.html"
     log:
