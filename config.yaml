@@ -32,6 +32,13 @@ filter_blacklist: true
 # Remove PCR duplicates
 remove_duplicates: true
 dedup_method: "picard"  # Options: picard, samtools
+picard_tmpdir: "results/tmp/picard"
+
+# Keep BAM outputs (.bam/.unique.bam/.filtered.bam). Default false to save space.
+keep_bam: false
+
+# Cleanup Picard temp directory after pipeline completes
+cleanup_picard_tmp: true
 
 # Samtools filtering flags
 samtools_exclude_flags: 1804  # exclude unmapped, not primary, fails QC, duplicate
