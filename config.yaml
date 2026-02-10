@@ -99,6 +99,7 @@ bigwig:
   bin_size: 10  # Bin size for coverage tracks
   normalization: "RPKM"  # Options: RPKM, CPM, BPM, RPGC, None
   samtools_exclude_flags: 1804  # Default: exclude unmapped, secondary, QC fail, duplicates
+  remove_chrM_and_scaffolds: true  # Exclude chrM/MT/M and scaffold-like contigs for bigWig
 
 # Generate both normalized and unnormalized bigWig files
 generate_raw_bigwig: true

@@ -32,10 +32,13 @@ Key sections:
 - **`filter_blacklist`**: enable/disable blacklist filtering.
 - **`blacklist`**: manual input for blacklist files.
 - **`remove_duplicates`**: enable/disable PCR duplicate removal.
-- **`bigwig`**: bin size + normalization.
+- **`bigwig`**: bin size + normalization + optional removal of chrM/scaffolds in bigWig output.
 - **`output.dir`**: output directory (default `results`).
 - **`macs`**: MACS3 peak calling parameters.
 - **`run_macs3`**: toggle MACS3 peak calling (default `true`).
+
+BigWig-specific option:
+- `bigwig.remove_chrM_and_scaffolds`: when `true` (default), excludes `chrM`/`MT`/`M` and scaffold-like contigs (`_`, `scaffold`, `random`, `Un`, `alt`, `fix`, `hap`) during bigWig generation.
 
 ### Blacklist (Manual Input)
 
