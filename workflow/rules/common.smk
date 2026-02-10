@@ -9,7 +9,6 @@ READ_TYPE = config.get("read_type", "PE").upper()
 FILTER_BLACKLIST = bool(config.get("filter_blacklist", False))
 REMOVE_DUPLICATES = bool(config.get("remove_duplicates", True))
 KEEP_BAM = bool(config.get("keep_bam", False))
-PICARD_TMPDIR = config.get("picard_tmpdir", f"{OUTDIR}/tmp/picard")
 
 
 def blacklist_config():

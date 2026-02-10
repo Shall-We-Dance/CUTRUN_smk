@@ -31,31 +31,6 @@ if config.get("run_macs3", True):
     PRIMARY_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_summits.bed", sample=SAMPLES)
     PRIMARY_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_peaks.xls", sample=SAMPLES)
 
-CLEANUP_PICARD_TARGET = (
-    f"{OUTDIR}/qc/tmp_cleanup/picard_tmp_cleanup.done"
-    if config.get("cleanup_picard_tmp", True)
-    else None
-)
-
-ALL_TARGETS = list(PRIMARY_TARGETS)
-if CLEANUP_PICARD_TARGET:
-    ALL_TARGETS.append(CLEANUP_PICARD_TARGET)
-
 rule all:
     input:
-        ALL_TARGETS
-
-
-if config.get("cleanup_picard_tmp", True):
-    rule cleanup_picard_tmp:
-        input:
-            PRIMARY_TARGETS
-        output:
-            CLEANUP_PICARD_TARGET
-        shell:
-            r"""
-            set -euo pipefail
-            rm -rf "{PICARD_TMPDIR}"
-            mkdir -p $(dirname {output})
-            touch {output}
-            """
+        PRIMARY_TARGETS
