@@ -1,0 +1,28 @@
+# Snakemake runtime artifacts
+.snakemake/
+
+# Pipeline outputs and logs
+results/
+logs/
+
+# Local environment / editor files
+.env
+.env.*
+*.local
+*.swp
+*.swo
+.DS_Store
+.vscode/
+.idea/
+
+# Sensitive keys / credentials
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# Python cache
+__pycache__/
+*.py[cod]
