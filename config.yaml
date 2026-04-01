@@ -16,6 +16,9 @@ reference:
   chrom_sizes: "/path/to/genome/dm6.chrom.sizes"
   fasta: "/path/to/genome.fa"
 
+# Enable blacklist filtering (requires blacklist.path or blacklist.url)
+filter_blacklist: true
+
 # Blacklist (manual)
 # Boyle-Lab blacklist repository (examples):
 #   https://github.com/Boyle-Lab/Blacklist
@@ -25,9 +28,6 @@ blacklist:
   # Provide exactly one of the following:
   # path: "/path/to/custom.blacklist.bed"
   # url: "https://raw.githubusercontent.com/Boyle-Lab/Blacklist/master/lists/dm6-blacklist.v2.bed.gz"
-
-# Enable blacklist filtering (requires blacklist.path or blacklist.url)
-filter_blacklist: true
 
 # Remove PCR duplicates
 remove_duplicates: true
