@@ -3,87 +3,22 @@ import os
 
 OUTDIR = config["output"]["dir"]
 
+
 def units(sample):
     return list(range(len(config["samples"][sample]["R1"])))
 
 
 # ----------------------------
-# Per-lane (unit) fastp
+# Merge raw FASTQ per sample first
 # ----------------------------
 if not is_single_end():
-    rule fastp_unit:
+    rule merge_raw_fastq_per_sample:
         input:
-            r1=lambda wc: config["samples"][wc.sample]["R1"][int(wc.unit)],
-            r2=lambda wc: config["samples"][wc.sample]["R2"][int(wc.unit)]
+            r1=lambda wc: [config["samples"][wc.sample]["R1"][i] for i in units(wc.sample)],
+            r2=lambda wc: [config["samples"][wc.sample]["R2"][i] for i in units(wc.sample)]
         output:
-            clean_r1=temp(f"{OUTDIR}/tmp/fastp/{{sample}}/unit{{unit}}_R1.fastq.gz"),
-            clean_r2=temp(f"{OUTDIR}/tmp/fastp/{{sample}}/unit{{unit}}_R2.fastq.gz"),
-            html_unit=f"{OUTDIR}/qc/fastp/{{sample}}/unit{{unit}}.html",
-            json_unit=f"{OUTDIR}/qc/fastp/{{sample}}/unit{{unit}}.json",
-        log:
-            f"logs/fastp/{{sample}}/unit{{unit}}.log"
-        threads: int(config["threads"]["fastp"])
-        conda:
-            "envs/qc.yaml"
-        params:
-            dedup_arg=("--dedup" if bool(config.get("fastp", {}).get("dedup_adapter", {}).get("dedup", True)) else ""),
-        shell:
-            r"""
-            set -euo pipefail
-            mkdir -p $(dirname {output.clean_r1}) $(dirname {output.html_unit}) $(dirname {log})
-
-            fastp \
-              -i {input.r1} -I {input.r2} \
-              -o {output.clean_r1} -O {output.clean_r2} \
-              --thread {threads} \
-              {params.dedup_arg} \
-              --html {output.html_unit} --json {output.json_unit} \
-              >> {log} 2>&1
-            """
-else:
-    rule fastp_unit:
-        input:
-            r1=lambda wc: config["samples"][wc.sample]["R1"][int(wc.unit)]
-        output:
-            clean_r1=temp(f"{OUTDIR}/tmp/fastp/{{sample}}/unit{{unit}}_R1.fastq.gz"),
-            html_unit=f"{OUTDIR}/qc/fastp/{{sample}}/unit{{unit}}.html",
-            json_unit=f"{OUTDIR}/qc/fastp/{{sample}}/unit{{unit}}.json",
-        log:
-            f"logs/fastp/{{sample}}/unit{{unit}}.log"
-        threads: int(config["threads"]["fastp"])
-        conda:
-            "envs/qc.yaml"
-        params:
-            dedup_arg=("--dedup" if bool(config.get("fastp", {}).get("dedup_adapter", {}).get("dedup", True)) else ""),
-        shell:
-            r"""
-            set -euo pipefail
-            mkdir -p $(dirname {output.clean_r1}) $(dirname {output.html_unit}) $(dirname {log})
-
-            fastp \
-              -i {input.r1} \
-              -o {output.clean_r1} \
-              --thread {threads} \
-              {params.dedup_arg} \
-              --html {output.html_unit} --json {output.json_unit} \
-              >> {log} 2>&1
-            """
-
-
-# ----------------------------
-# Merge post-fastp per sample (after per-lane processing)
-# ----------------------------
-if not is_single_end():
-    rule merge_fastq_after_fastp:
-        input:
-            r1=lambda wc: [f"{OUTDIR}/tmp/fastp/{wc.sample}/unit{i}_R1.fastq.gz" for i in units(wc.sample)],
-            r2=lambda wc: [f"{OUTDIR}/tmp/fastp/{wc.sample}/unit{i}_R2.fastq.gz" for i in units(wc.sample)],
-            # Ensure per-lane reports exist before merging (optional but helpful for DAG clarity)
-            html=lambda wc: [f"{OUTDIR}/qc/fastp/{wc.sample}/unit{i}.html" for i in units(wc.sample)],
-            json=lambda wc: [f"{OUTDIR}/qc/fastp/{wc.sample}/unit{i}.json" for i in units(wc.sample)],
-        output:
-            merged_r1=temp(f"{OUTDIR}/tmp/merged_fastq/{{sample}}_R1.fastq.gz"),
-            merged_r2=temp(f"{OUTDIR}/tmp/merged_fastq/{{sample}}_R2.fastq.gz")
+            merged_r1=temp(f"{OUTDIR}/tmp/merged_raw/{{sample}}_R1.fastq.gz"),
+            merged_r2=temp(f"{OUTDIR}/tmp/merged_raw/{{sample}}_R2.fastq.gz")
         threads: 2
         shell:
             r"""
@@ -93,14 +28,11 @@ if not is_single_end():
             cat {input.r2} > {output.merged_r2}
             """
 else:
-    rule merge_fastq_after_fastp:
+    rule merge_raw_fastq_per_sample:
         input:
-            r1=lambda wc: [f"{OUTDIR}/tmp/fastp/{wc.sample}/unit{i}_R1.fastq.gz" for i in units(wc.sample)],
-            # Ensure per-lane reports exist before merging (optional but helpful for DAG clarity)
-            html=lambda wc: [f"{OUTDIR}/qc/fastp/{wc.sample}/unit{i}.html" for i in units(wc.sample)],
-            json=lambda wc: [f"{OUTDIR}/qc/fastp/{wc.sample}/unit{i}.json" for i in units(wc.sample)],
+            r1=lambda wc: [config["samples"][wc.sample]["R1"][i] for i in units(wc.sample)]
         output:
-            merged_r1=temp(f"{OUTDIR}/tmp/merged_fastq/{{sample}}_R1.fastq.gz")
+            merged_r1=temp(f"{OUTDIR}/tmp/merged_raw/{{sample}}_R1.fastq.gz")
         threads: 2
         shell:
             r"""
@@ -111,78 +43,74 @@ else:
 
 
 # ----------------------------
-# Sample-level fastp report-only (do not modify reads)
-#   Uses merged FASTQs, generates sample-level HTML/JSON.
-#   Output FASTQs are temp and not kept.
+# Run fastp at sample level (after merge)
 # ----------------------------
 if not is_single_end():
-    rule fastp_sample_report_only:
+    rule fastp_sample_level:
         input:
-            r1=f"{OUTDIR}/tmp/merged_fastq/{{sample}}_R1.fastq.gz",
-            r2=f"{OUTDIR}/tmp/merged_fastq/{{sample}}_R2.fastq.gz"
+            r1=f"{OUTDIR}/tmp/merged_raw/{{sample}}_R1.fastq.gz",
+            r2=f"{OUTDIR}/tmp/merged_raw/{{sample}}_R2.fastq.gz"
         output:
-            html=f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.html",
-            json=f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.json",
-            out_r1=temp(f"{OUTDIR}/tmp/fastp_sample/{{sample}}_R1.fastq.gz"),
-            out_r2=temp(f"{OUTDIR}/tmp/fastp_sample/{{sample}}_R2.fastq.gz"),
+            clean_r1=temp(f"{OUTDIR}/tmp/fastp_sample/{{sample}}_R1.fastq.gz"),
+            clean_r2=temp(f"{OUTDIR}/tmp/fastp_sample/{{sample}}_R2.fastq.gz"),
+            html=f"{OUTDIR}/qc/fastp/{{sample}}/fastp.html",
+            json=f"{OUTDIR}/qc/fastp/{{sample}}/fastp.json"
         log:
-            f"logs/fastp/{{sample}}/sample_report_only.log"
-        threads: 2
+            f"logs/fastp/{{sample}}.log"
+        threads: int(config["threads"]["fastp"])
         conda:
             "envs/qc.yaml"
+        params:
+            dedup_arg=("--dedup" if bool(config.get("fastp", {}).get("dedup_adapter", {}).get("dedup", True)) else "")
         shell:
             r"""
             set -euo pipefail
-            mkdir -p $(dirname {output.html}) $(dirname {output.out_r1}) $(dirname {log})
+            mkdir -p $(dirname {output.clean_r1}) $(dirname {output.html}) $(dirname {log})
 
             fastp \
               -i {input.r1} -I {input.r2} \
-              -o {output.out_r1} -O {output.out_r2} \
-              --disable_adapter_trimming \
-              --disable_quality_filtering \
-              --disable_length_filtering \
-              --html {output.html} --json {output.json} \
+              -o {output.clean_r1} -O {output.clean_r2} \
               --thread {threads} \
+              {params.dedup_arg} \
+              --html {output.html} --json {output.json} \
               > {log} 2>&1
             """
 else:
-    rule fastp_sample_report_only:
+    rule fastp_sample_level:
         input:
-            r1=f"{OUTDIR}/tmp/merged_fastq/{{sample}}_R1.fastq.gz"
+            r1=f"{OUTDIR}/tmp/merged_raw/{{sample}}_R1.fastq.gz"
         output:
-            html=f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.html",
-            json=f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.json",
-            out_r1=temp(f"{OUTDIR}/tmp/fastp_sample/{{sample}}_R1.fastq.gz"),
+            clean_r1=temp(f"{OUTDIR}/tmp/fastp_sample/{{sample}}_R1.fastq.gz"),
+            html=f"{OUTDIR}/qc/fastp/{{sample}}/fastp.html",
+            json=f"{OUTDIR}/qc/fastp/{{sample}}/fastp.json"
         log:
-            f"logs/fastp/{{sample}}/sample_report_only.log"
-        threads: 2
+            f"logs/fastp/{{sample}}.log"
+        threads: int(config["threads"]["fastp"])
         conda:
             "envs/qc.yaml"
+        params:
+            dedup_arg=("--dedup" if bool(config.get("fastp", {}).get("dedup_adapter", {}).get("dedup", True)) else "")
         shell:
             r"""
             set -euo pipefail
-            mkdir -p $(dirname {output.html}) $(dirname {output.out_r1}) $(dirname {log})
+            mkdir -p $(dirname {output.clean_r1}) $(dirname {output.html}) $(dirname {log})
 
             fastp \
               -i {input.r1} \
-              -o {output.out_r1} \
-              --disable_adapter_trimming \
-              --disable_quality_filtering \
-              --disable_length_filtering \
-              --html {output.html} --json {output.json} \
+              -o {output.clean_r1} \
               --thread {threads} \
+              {params.dedup_arg} \
+              --html {output.html} --json {output.json} \
               > {log} 2>&1
             """
 
 
 # ----------------------------
 # MultiQC summary
-#   Use --force to avoid _1 suffix when outputs already exist.
-#   Limit scanning scope to QC + logs for performance/stability.
 # ----------------------------
 rule multiqc:
     input:
-        expand(f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.html", sample=SAMPLES),
+        expand(f"{OUTDIR}/qc/fastp/{{sample}}/fastp.html", sample=SAMPLES),
         [bowtie2_log_path(sample) for sample in SAMPLES],
         [path for sample in SAMPLES for path in bam_flagstat_paths(sample)]
     output:
