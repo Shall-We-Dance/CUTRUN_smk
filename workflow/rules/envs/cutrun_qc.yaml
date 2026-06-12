@@ -1,8 +1,9 @@
 name: cutrun_qc
 channels:
-  - bioconda
   - conda-forge
+  - bioconda
+  - nodefaults
 dependencies:
-  - python
+  - python=3.11
   - samtools
   - preseq

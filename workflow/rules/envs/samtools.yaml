@@ -1,5 +1,8 @@
 name: samtools
-channels: [conda-forge, bioconda]
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
 dependencies:
-  - python
+  - python=3.11
   - samtools

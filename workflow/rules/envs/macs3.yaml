@@ -1,6 +1,9 @@
 name: macs3
 channels:
-  - bioconda
   - conda-forge
+  - bioconda
+  - nodefaults
 dependencies:
-  - macs3
+  - macs3=3.0.4
+  - python=3.11
+  - hmmlearn=0.3.2

@@ -1,7 +1,8 @@
 name: bowtie2
 channels:
-  - bioconda
   - conda-forge
+  - bioconda
+  - nodefaults
 dependencies:
   - bowtie2
   - openjdk
