@@ -38,8 +38,7 @@ Key sections:
 - **`cutrun_qc`**: usable fragment/read depth, fragment length, and preseq complexity outputs.
 - **`spikein`**: optional spike-in genome alignment, scale factors, and spike-in-scaled bigWigs.
 - **`output.dir`**: output directory (default `results`).
-- **`macs`**: MACS3 peak calling parameters.
-- **`run_macs3`**: toggle MACS3 peak calling (default `true`).
+- **`macs3`**: MACS3 peak calling toggle and parameters.
 
 BigWig-specific option:
 - `bigwig.remove_chrM_and_scaffolds`: when `true` (default), excludes `chrM`/`MT`/`M` and scaffold-like contigs (`_`, `scaffold`, `random`, `Un`, `alt`, `fix`, `hap`) during bigWig generation.

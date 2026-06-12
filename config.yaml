@@ -102,16 +102,14 @@ spikein:
   min_fragments: 1000
   generate_bigwig: true
 
-# Run MACS3 peak calling
-run_macs3: true
-
-# Peak Calling (MACS3)
-macs:
+# MACS3 peak calling
+macs3:
+  enabled: true
   gsize: "dm"  # Effective genome size: hs, mm, ce, dm
   qvalue: 0.05  # Q-value cutoff
   extsize: 200  # Fragment extension size
   broad: false  # Set true for broad peak calling (H3K27me3, etc.)
-  broad_cutoff: 0.1  # Broad peak cutoff (only used if macs.broad=true)
+  broad_cutoff: 0.1  # Broad peak cutoff (only used if macs3.broad=true)
 
 # ----------------------------------------------------------------------------
 # BigWig Generation

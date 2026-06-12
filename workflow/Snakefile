@@ -3,7 +3,7 @@ from snakemake.utils import min_version, validate
 min_version("9.3.3")
 
 configfile: "config.yaml"
-validate(config, "workflow/schemas/config.schema.yaml")
+validate(config, "schemas/config.schema.yaml")
 
 include: "rules/common.smk"
 include: "rules/qc_fastp.smk"
@@ -40,7 +40,7 @@ if CUTRUN_QC_ENABLED:
     if PRESEQ_ENABLED:
         PRIMARY_TARGETS += [preseq_path(sample) for sample in SAMPLES]
     PRIMARY_TARGETS.append(cutrun_qc_summary_path())
-if config.get("run_macs3", True):
+if MACS3_ENABLED:
     PRIMARY_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_peaks.narrowPeak", sample=SAMPLES)
     PRIMARY_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_summits.bed", sample=SAMPLES)
     PRIMARY_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_peaks.xls", sample=SAMPLES)

@@ -15,6 +15,8 @@ SPIKEIN_ENABLED = bool(config.get("spikein", {}).get("enabled", False))
 SPIKEIN_BIGWIG_ENABLED = (
     SPIKEIN_ENABLED and bool(config.get("spikein", {}).get("generate_bigwig", True))
 )
+MACS3_CONFIG = config.get("macs3", {})
+MACS3_ENABLED = bool(MACS3_CONFIG.get("enabled", True))
 
 
 def blacklist_config():
@@ -204,6 +206,11 @@ def validate_workflow_config():
             raise ValueError("spikein.enabled is true but spikein.bowtie2_index is missing.")
         if float(spikein.get("scale_to", 10000)) <= 0:
             raise ValueError("spikein.scale_to must be greater than 0.")
+
+    if MACS3_ENABLED:
+        for key in ["gsize", "qvalue", "extsize"]:
+            if key not in MACS3_CONFIG:
+                raise ValueError(f"macs3.enabled is true but macs3.{key} is missing.")
 
 
 rule faidx_reference:
