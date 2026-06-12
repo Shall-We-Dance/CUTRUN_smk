@@ -1,14 +1,17 @@
 import os
-from snakemake.utils import min_version
+from snakemake.utils import min_version, validate
 min_version("9.3.3")
 
 configfile: "config.yaml"
+validate(config, "workflow/schemas/config.schema.yaml")
 
 include: "rules/common.smk"
 include: "rules/qc_fastp.smk"
 include: "rules/align_bowtie2.smk"
+include: "rules/spikein.smk"
 include: "rules/bam_to_bigwig.smk"
 include: "rules/macs3.smk"
+include: "rules/cutrun_qc.smk"
 
 MULTIQC_TARGET = (
     f"{OUTDIR}/qc/multiqc/multiqc_report.html"
@@ -17,8 +20,8 @@ MULTIQC_TARGET = (
 )
 
 PRIMARY_TARGETS = []
-PRIMARY_TARGETS += expand(f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.html", sample=SAMPLES)
-PRIMARY_TARGETS += expand(f"{OUTDIR}/qc/fastp/{{sample}}/merged_fastp_final.json", sample=SAMPLES)
+PRIMARY_TARGETS += expand(f"{OUTDIR}/qc/fastp/{{sample}}/fastp.html", sample=SAMPLES)
+PRIMARY_TARGETS += expand(f"{OUTDIR}/qc/fastp/{{sample}}/fastp.json", sample=SAMPLES)
 if MULTIQC_TARGET:
     PRIMARY_TARGETS.append(MULTIQC_TARGET)
 if KEEP_BAM:
@@ -26,6 +29,17 @@ if KEEP_BAM:
     PRIMARY_TARGETS += [final_bai_path(sample) for sample in SAMPLES]
 PRIMARY_TARGETS += expand(f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.raw.bw", sample=SAMPLES)
 PRIMARY_TARGETS += expand(f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.normalized.bw", sample=SAMPLES)
+if SPIKEIN_ENABLED:
+    PRIMARY_TARGETS += [spikein_scale_factor_path(sample) for sample in SAMPLES]
+    PRIMARY_TARGETS.append(spikein_scale_factors_path())
+    if SPIKEIN_BIGWIG_ENABLED:
+        PRIMARY_TARGETS += [spikein_normalized_bigwig_path(sample) for sample in SAMPLES]
+if CUTRUN_QC_ENABLED:
+    PRIMARY_TARGETS += [cutrun_usable_fragments_path(sample) for sample in SAMPLES]
+    PRIMARY_TARGETS += [fragment_length_path(sample) for sample in SAMPLES]
+    if PRESEQ_ENABLED:
+        PRIMARY_TARGETS += [preseq_path(sample) for sample in SAMPLES]
+    PRIMARY_TARGETS.append(cutrun_qc_summary_path())
 if config.get("run_macs3", True):
     PRIMARY_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_peaks.narrowPeak", sample=SAMPLES)
     PRIMARY_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_summits.bed", sample=SAMPLES)

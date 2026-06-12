@@ -8,6 +8,8 @@ This repository provides a modular Snakemake workflow for paired-end and single-
 - **Bowtie2 alignment with unique-mapper filtering**
 - **Optional ENCODE/Boyle-Lab (or custom) blacklist filtering**
 - **Optional PCR duplicate removal (Picard or samtools)**
+- **CUT&RUN/CUT&Tag QC: usable fragments, fragment lengths, preseq complexity**
+- **Optional spike-in normalization and spike-in-scaled bigWigs**
 - **Raw + normalized bigWig outputs**
 - **MACS3 peak calling (optional)**
 - **MultiQC summary report**
@@ -33,6 +35,8 @@ Key sections:
 - **`blacklist`**: manual input for blacklist files.
 - **`remove_duplicates`**: enable/disable PCR duplicate removal.
 - **`bigwig`**: bin size + normalization + optional removal of chrM/scaffolds in bigWig output.
+- **`cutrun_qc`**: usable fragment/read depth, fragment length, and preseq complexity outputs.
+- **`spikein`**: optional spike-in genome alignment, scale factors, and spike-in-scaled bigWigs.
 - **`output.dir`**: output directory (default `results`).
 - **`macs`**: MACS3 peak calling parameters.
 - **`run_macs3`**: toggle MACS3 peak calling (default `true`).
@@ -70,9 +74,11 @@ Reference repositories:
 5. **Unique mapper filtering**
 6. **Optional blacklist filtering**
 7. **Optional duplicate removal**
-8. **BigWig generation** (raw + normalized)
-9. **MACS3 peak calling** (optional)
-10. **MultiQC report**
+8. **CUT&RUN/CUT&Tag QC** (usable fragments, fragment length, preseq)
+9. **Optional spike-in alignment and scaling**
+10. **BigWig generation** (raw + normalized + optional spike-in scaled)
+11. **MACS3 peak calling** (optional)
+12. **MultiQC report**
 
 ## Outputs (default `results/`)
 
@@ -80,21 +86,27 @@ Reference repositories:
 results/
 ├── qc/
 │   ├── fastp/
+│   ├── cutrun/
+│   ├── spikein/
 │   └── multiqc/
 ├── bowtie2/
 │   └── <sample>/<sample>.<suffix>.bam
+├── spikein/
+│   └── bowtie2/<sample>/<sample>.spikein.bam
 ├── macs3/
 │   └── <sample>/<sample>_peaks.narrowPeak
 └── bigwig/
     └── <sample>/<sample>.raw.bw
     └── <sample>/<sample>.normalized.bw
+    └── <sample>/<sample>.spikein_normalized.bw
 ```
 
 ## Notes
 
 - The pipeline supports both **paired-end** (`read_type: PE`) and **single-end** (`read_type: SE`) samples.
 - When `filter_blacklist: true`, you must provide **either** `blacklist.path` **or** `blacklist.url`.
-- MultiQC scans `results/qc` and `logs/` by default.
+- When `spikein.enabled: true`, `spikein.bowtie2_index` must point to a spike-in Bowtie2 index.
+- MultiQC scans `results/qc`, `results/bowtie2`, and `logs/` by default.
 
 ## License
 

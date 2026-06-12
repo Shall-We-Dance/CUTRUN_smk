@@ -1,0 +1,8 @@
+name: cutrun_qc
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - python
+  - samtools
+  - preseq

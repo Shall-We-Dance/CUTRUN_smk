@@ -71,3 +71,66 @@ rule bam_to_bigwig:
             rm -f "$EXCLUDE_BED"
         fi
         """
+
+
+if SPIKEIN_BIGWIG_ENABLED:
+    rule bam_to_spikein_normalized_bigwig:
+        """Generate target-genome bigWig tracks scaled by spike-in alignment depth."""
+        input:
+            bam=lambda wc: final_bam_path(wc.sample),
+            bai=lambda wc: final_bai_path(wc.sample),
+            scale=spikein_scale_factor_path("{sample}")
+        params:
+            chrom_sizes=config["reference"]["chrom_sizes"],
+            bin_size=config.get("bigwig", {}).get("bin_size", 10),
+            exclude_flags=config.get("samtools_exclude_flags", 1804),
+            remove_chrM_and_scaffolds=bool(
+                config.get("bigwig", {}).get("remove_chrM_and_scaffolds", True)
+            )
+        output:
+            bw=spikein_normalized_bigwig_path("{sample}")
+        log:
+            f"logs/bigwig/{{sample}}.spikein_bamCoverage.log"
+        threads: int(config["threads"]["deeptools"])
+        conda:
+            "envs/deeptools.yaml"
+        shell:
+            """
+            mkdir -p $(dirname {output.bw}) $(dirname {log})
+
+            scale_factor=$(awk 'NR == 2 {{print $5}}' {input.scale})
+            if [ -z "$scale_factor" ]; then
+                scale_factor=1
+            fi
+
+            EXTRA_BAMCOVERAGE_ARGS=""
+            if [ "{params.remove_chrM_and_scaffolds}" = "True" ]; then
+                EXCLUDE_BED=$(mktemp)
+                awk 'BEGIN{{IGNORECASE=1}} {{
+                    chrom=$1; size=$2;
+                    if (chrom ~ /_/ || chrom ~ /scaffold|random|un|alt|fix|hap/ || chrom == "chrM" || chrom == "MT" || chrom == "M") {{
+                        print chrom"\t0\t"size
+                    }}
+                }}' {params.chrom_sizes} > "$EXCLUDE_BED"
+
+                if [ -s "$EXCLUDE_BED" ]; then
+                    EXTRA_BAMCOVERAGE_ARGS="--blackListFileName $EXCLUDE_BED"
+                fi
+            fi
+
+            bamCoverage \
+                --bam {input.bam} \
+                --outFileName {output.bw} \
+                --outFileFormat bigwig \
+                --numberOfProcessors {threads} \
+                --binSize {params.bin_size} \
+                --normalizeUsing None \
+                --scaleFactor "$scale_factor" \
+                --samFlagExclude {params.exclude_flags} \
+                $EXTRA_BAMCOVERAGE_ARGS \
+                > {log} 2>&1
+
+            if [ -n "${{EXCLUDE_BED:-}}" ] && [ -f "$EXCLUDE_BED" ]; then
+                rm -f "$EXCLUDE_BED"
+            fi
+            """

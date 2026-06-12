@@ -8,6 +8,19 @@ def units(sample):
     return list(range(len(config["samples"][sample]["R1"])))
 
 
+def fastp_extra_args():
+    dedup_adapter = config.get("fastp", {}).get("dedup_adapter", {})
+    if not bool(dedup_adapter.get("enable", True)):
+        return "--disable_adapter_trimming"
+
+    args = []
+    if bool(dedup_adapter.get("dedup", True)):
+        args.append("--dedup")
+    if dedup_adapter.get("extra"):
+        args.append(str(dedup_adapter["extra"]))
+    return " ".join(args)
+
+
 # ----------------------------
 # Merge raw FASTQ per sample first
 # ----------------------------
@@ -61,7 +74,7 @@ if not is_single_end():
         conda:
             "envs/qc.yaml"
         params:
-            dedup_arg=("--dedup" if bool(config.get("fastp", {}).get("dedup_adapter", {}).get("dedup", True)) else "")
+            extra_args=fastp_extra_args()
         shell:
             r"""
             set -euo pipefail
@@ -71,7 +84,7 @@ if not is_single_end():
               -i {input.r1} -I {input.r2} \
               -o {output.clean_r1} -O {output.clean_r2} \
               --thread {threads} \
-              {params.dedup_arg} \
+              {params.extra_args} \
               --html {output.html} --json {output.json} \
               > {log} 2>&1
             """
@@ -89,7 +102,7 @@ else:
         conda:
             "envs/qc.yaml"
         params:
-            dedup_arg=("--dedup" if bool(config.get("fastp", {}).get("dedup_adapter", {}).get("dedup", True)) else "")
+            extra_args=fastp_extra_args()
         shell:
             r"""
             set -euo pipefail
@@ -99,7 +112,7 @@ else:
               -i {input.r1} \
               -o {output.clean_r1} \
               --thread {threads} \
-              {params.dedup_arg} \
+              {params.extra_args} \
               --html {output.html} --json {output.json} \
               > {log} 2>&1
             """
@@ -112,7 +125,12 @@ rule multiqc:
     input:
         expand(f"{OUTDIR}/qc/fastp/{{sample}}/fastp.html", sample=SAMPLES),
         [bowtie2_log_path(sample) for sample in SAMPLES],
-        [path for sample in SAMPLES for path in bam_flagstat_paths(sample)]
+        [path for sample in SAMPLES for path in bam_flagstat_paths(sample)],
+        [duplicate_metrics_path(sample) for sample in SAMPLES] if REMOVE_DUPLICATES else [],
+        [path for sample in SAMPLES for path in cutrun_qc_paths(sample)],
+        [cutrun_qc_summary_path()] if CUTRUN_QC_ENABLED else [],
+        [path for sample in SAMPLES for path in spikein_qc_paths(sample)],
+        [spikein_scale_factors_path()] if SPIKEIN_ENABLED else []
     output:
         html=f"{OUTDIR}/qc/multiqc/multiqc_report.html"
     log:
@@ -124,5 +142,5 @@ rule multiqc:
         r"""
         set -euo pipefail
         mkdir -p $(dirname {output.html}) $(dirname {log})
-        multiqc --force -o {OUTDIR}/qc/multiqc {OUTDIR}/qc logs > {log} 2>&1
+        multiqc --force -o {OUTDIR}/qc/multiqc {OUTDIR}/qc {OUTDIR}/bowtie2 logs > {log} 2>&1
         """

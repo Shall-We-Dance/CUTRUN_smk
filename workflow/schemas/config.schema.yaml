@@ -1,0 +1,209 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+type: object
+additionalProperties: true
+required:
+  - read_type
+  - threads
+  - reference
+  - samples
+  - output
+properties:
+  genome:
+    type: string
+  read_type:
+    type: string
+    enum: ["PE", "SE"]
+  threads:
+    type: object
+    additionalProperties:
+      type: integer
+      minimum: 1
+    required:
+      - fastp
+      - bowtie2
+      - samtools
+      - deeptools
+    properties:
+      fastp:
+        type: integer
+        minimum: 1
+      bowtie2:
+        type: integer
+        minimum: 1
+      samtools:
+        type: integer
+        minimum: 1
+      deeptools:
+        type: integer
+        minimum: 1
+  reference:
+    type: object
+    additionalProperties: true
+    required:
+      - bowtie2_index
+      - chrom_sizes
+      - fasta
+    properties:
+      bowtie2_index:
+        type: string
+        minLength: 1
+      chrom_sizes:
+        type: string
+        minLength: 1
+      fasta:
+        type: string
+        minLength: 1
+  filter_blacklist:
+    type: boolean
+  blacklist:
+    type: object
+    additionalProperties: true
+    properties:
+      path:
+        type: string
+      url:
+        type: string
+      cache_dir:
+        type: string
+  remove_duplicates:
+    type: boolean
+  dedup_method:
+    type: string
+    enum: ["picard", "samtools"]
+  keep_bam:
+    type: boolean
+  samtools_exclude_flags:
+    type: integer
+    minimum: 0
+  bedtools_nonamecheck:
+    type: boolean
+  samples:
+    type: object
+    minProperties: 1
+    additionalProperties:
+      type: object
+      additionalProperties: true
+      required:
+        - R1
+      properties:
+        R1:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+        R2:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+  fastp:
+    type: object
+    additionalProperties: true
+    properties:
+      dedup_adapter:
+        type: object
+        additionalProperties: true
+        properties:
+          enable:
+            type: boolean
+          dedup:
+            type: boolean
+          extra:
+            type: string
+  bowtie2:
+    type: object
+    additionalProperties: true
+    properties:
+      max_insert_size:
+        type: integer
+        minimum: 1
+      mode:
+        type: string
+      keep_multimappers:
+        type: boolean
+      mapq_threshold:
+        type: integer
+        minimum: 0
+      extra:
+        type: string
+  output:
+    type: object
+    additionalProperties: true
+    required:
+      - dir
+    properties:
+      dir:
+        type: string
+        minLength: 1
+  generate_multiqc:
+    type: boolean
+  run_macs3:
+    type: boolean
+  macs:
+    type: object
+    additionalProperties: true
+    required:
+      - gsize
+      - qvalue
+    properties:
+      gsize:
+        type: [string, number]
+      qvalue:
+        type: number
+        minimum: 0
+      extsize:
+        type: integer
+        minimum: 1
+      broad:
+        type: boolean
+      broad_cutoff:
+        type: number
+        minimum: 0
+  bigwig:
+    type: object
+    additionalProperties: true
+    properties:
+      bin_size:
+        type: integer
+        minimum: 1
+      normalization:
+        type: string
+      samtools_exclude_flags:
+        type: integer
+        minimum: 0
+      remove_chrM_and_scaffolds:
+        type: boolean
+  generate_raw_bigwig:
+    type: boolean
+  generate_normalized_bigwig:
+    type: boolean
+  cutrun_qc:
+    type: object
+    additionalProperties: true
+    properties:
+      enabled:
+        type: boolean
+      preseq:
+        type: object
+        additionalProperties: true
+        properties:
+          enabled:
+            type: boolean
+  spikein:
+    type: object
+    additionalProperties: true
+    properties:
+      enabled:
+        type: boolean
+      bowtie2_index:
+        type: string
+      scale_to:
+        type: number
+        exclusiveMinimum: 0
+      min_fragments:
+        type: integer
+        minimum: 0
+      generate_bigwig:
+        type: boolean

@@ -63,8 +63,12 @@ samples:
 fastp:
   # QC + Illumina adapter trimming + dedup
   dedup_adapter:
+    # Set false to keep fastp QC/reporting but disable adapter trimming and dedup.
     enable: true
+    # Only used when enable=true.
     dedup: true
+    # Optional raw fastp arguments, e.g. "--trim_poly_g".
+    extra: ""
 
 # bowtie2 alignment settings
 bowtie2:
@@ -80,6 +84,23 @@ output:
 
 # Generate summary reports
 generate_multiqc: true
+
+# CUT&RUN/CUT&Tag-specific QC
+cutrun_qc:
+  enabled: true
+  preseq:
+    enabled: true
+
+# Optional spike-in normalization.
+# When enabled, cleaned reads are aligned to the spike-in genome, per-sample scale
+# factors are written to results/qc/spikein/, and spike-in scaled bigWigs are
+# generated as <sample>.spikein_normalized.bw.
+spikein:
+  enabled: false
+  bowtie2_index: "/path/to/spikein/bowtie2/index"
+  scale_to: 10000
+  min_fragments: 1000
+  generate_bigwig: true
 
 # Run MACS3 peak calling
 run_macs3: true

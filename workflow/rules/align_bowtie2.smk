@@ -191,7 +191,7 @@ if REMOVE_DUPLICATES:
         output:
             bam = maybe_temp(dedup_bam_path("{sample}")),
             bai = maybe_temp(dedup_bam_path("{sample}") + ".bai"),
-            metrics = f"{OUTDIR}/bowtie2/{{sample}}/{{sample}}.dedup_metrics.txt",
+            metrics = duplicate_metrics_path("{sample}"),
             flagstat = dedup_flagstat_path("{sample}")
         params:
             method = config.get("dedup_method", "picard"),
