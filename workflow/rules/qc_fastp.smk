@@ -8,13 +8,14 @@ def units(sample):
     return list(range(len(config["samples"][sample]["R1"])))
 
 
-def fastp_extra_args():
+def fastp_extra_args(force_dedup=None):
     dedup_adapter = config.get("fastp", {}).get("dedup_adapter", {})
     if not bool(dedup_adapter.get("enable", True)):
         return "--disable_adapter_trimming"
 
     args = []
-    if bool(dedup_adapter.get("dedup", True)):
+    dedup = bool(dedup_adapter.get("dedup", True)) if force_dedup is None else bool(force_dedup)
+    if dedup:
         args.append("--dedup")
     if dedup_adapter.get("extra"):
         args.append(str(dedup_adapter["extra"]))

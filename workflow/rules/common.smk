@@ -65,6 +65,50 @@ def final_bai_path(sample):
     return final_bam_path(sample) + ".bai"
 
 
+def preseq_clean_r1_path(sample):
+    return f"{OUTDIR}/tmp/preseq_fastp/{sample}_R1.fastq.gz"
+
+
+def preseq_clean_r2_path(sample):
+    return f"{OUTDIR}/tmp/preseq_fastp/{sample}_R2.fastq.gz"
+
+
+def preseq_aligned_bam_path(sample):
+    suffix = "se" if is_single_end() else "pe"
+    return f"{OUTDIR}/qc/preseq/{sample}/{sample}.preseq_{suffix}.bam"
+
+
+def preseq_aligned_flagstat_path(sample):
+    suffix = "se" if is_single_end() else "pe"
+    return f"{OUTDIR}/qc/preseq/{sample}/{sample}.preseq_{suffix}.flagstat.txt"
+
+
+def preseq_unique_bam_path(sample):
+    return f"{OUTDIR}/qc/preseq/{sample}/{sample}.preseq.unique.bam"
+
+
+def preseq_unique_flagstat_path(sample):
+    return f"{OUTDIR}/qc/preseq/{sample}/{sample}.preseq.unique.flagstat.txt"
+
+
+def preseq_filtered_bam_path(sample):
+    return f"{OUTDIR}/qc/preseq/{sample}/{sample}.preseq.unique.filtered.bam"
+
+
+def preseq_filtered_flagstat_path(sample):
+    return f"{OUTDIR}/qc/preseq/{sample}/{sample}.preseq.unique.filtered.flagstat.txt"
+
+
+def preseq_input_bam_path(sample):
+    if FILTER_BLACKLIST:
+        return preseq_filtered_bam_path(sample)
+    return preseq_unique_bam_path(sample)
+
+
+def preseq_input_bai_path(sample):
+    return preseq_input_bam_path(sample) + ".bai"
+
+
 def is_single_end():
     return READ_TYPE == "SE"
 

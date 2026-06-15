@@ -98,13 +98,13 @@ if SPIKEIN_ENABLED:
                 spikein_fragments="$spikein_reads"
             fi
 
-            scale_factor=$(awk -v scale_to="{params.scale_to}" -v fragments="$spikein_fragments" 'BEGIN {if (fragments > 0) printf "%.10f", scale_to / fragments; else printf "1"}')
-            status=$(awk -v fragments="$spikein_fragments" -v min_fragments="{params.min_fragments}" 'BEGIN {if (fragments == 0) print "NO_SPIKEIN"; else if (fragments < min_fragments) print "LOW_SPIKEIN"; else print "OK"}')
+            scale_factor=$(awk -v scale_to="{params.scale_to}" -v fragments="$spikein_fragments" 'BEGIN {{if (fragments > 0) printf "%.10f", scale_to / fragments; else printf "1"}}')
+            status=$(awk -v fragments="$spikein_fragments" -v min_fragments="{params.min_fragments}" 'BEGIN {{if (fragments == 0) print "NO_SPIKEIN"; else if (fragments < min_fragments) print "LOW_SPIKEIN"; else print "OK"}}')
 
-            {
+            {{
                 printf "sample\tspikein_reads\tspikein_fragments\tscale_to\tscale_factor\tstatus\n"
                 printf "{wildcards.sample}\t%s\t%s\t{params.scale_to}\t%s\t%s\n" "$spikein_reads" "$spikein_fragments" "$scale_factor" "$status"
-            } > {output.tsv}
+            }} > {output.tsv}
             """
 
     rule summarize_spikein_scale_factors:
@@ -118,5 +118,5 @@ if SPIKEIN_ENABLED:
             r"""
             set -euo pipefail
             mkdir -p $(dirname {output.tsv})
-            awk 'FNR == 1 && NR != 1 {next} {print}' {input} > {output.tsv}
+            awk 'FNR == 1 && NR != 1 {{next}} {{print}}' {input} > {output.tsv}
             """

@@ -8,7 +8,7 @@ This repository provides a modular Snakemake workflow for paired-end and single-
 - **Bowtie2 alignment with unique-mapper filtering**
 - **Optional ENCODE/Boyle-Lab (or custom) blacklist filtering**
 - **Optional PCR duplicate removal (Picard or samtools)**
-- **CUT&RUN/CUT&Tag QC: usable fragments, fragment lengths, preseq complexity**
+- **CUT&RUN/CUT&Tag QC: usable fragments, fragment lengths, optional preseq complexity side branch**
 - **Optional spike-in normalization and spike-in-scaled bigWigs**
 - **Raw + normalized bigWig outputs**
 - **MACS3 peak calling (optional)**
@@ -34,8 +34,9 @@ Key sections:
 - **`filter_blacklist`**: enable/disable blacklist filtering.
 - **`blacklist`**: manual input for blacklist files.
 - **`remove_duplicates`**: enable/disable PCR duplicate removal.
+- **`fastp.dedup_adapter.dedup`**: enable/disable fastp dedup for the main output workflow.
 - **`bigwig`**: bin size + normalization + optional removal of chrM/scaffolds in bigWig output.
-- **`cutrun_qc`**: usable fragment/read depth, fragment length, and preseq complexity outputs.
+- **`cutrun_qc`**: usable fragment/read depth, fragment length, and optional preseq complexity outputs.
 - **`spikein`**: optional spike-in genome alignment, scale factors, and spike-in-scaled bigWigs.
 - **`output.dir`**: output directory (default `results`).
 - **`macs3`**: MACS3 peak calling toggle and parameters.
@@ -73,11 +74,12 @@ Reference repositories:
 5. **Unique mapper filtering**
 6. **Optional blacklist filtering**
 7. **Optional duplicate removal**
-8. **CUT&RUN/CUT&Tag QC** (usable fragments, fragment length, preseq)
-9. **Optional spike-in alignment and scaling**
-10. **BigWig generation** (raw + normalized + optional spike-in scaled)
-11. **MACS3 peak calling** (optional)
-12. **MultiQC report**
+8. **CUT&RUN/CUT&Tag QC** (usable fragments, fragment length)
+9. **Optional preseq QC branch**: merged raw FASTQ → fastp without dedup → Bowtie2 → unique/blacklist filtering → preseq
+10. **Optional spike-in alignment and scaling**
+11. **BigWig generation** (raw + normalized + optional spike-in scaled)
+12. **MACS3 peak calling** (optional)
+13. **MultiQC report**
 
 ## Outputs (default `results/`)
 
@@ -86,6 +88,7 @@ results/
 ├── qc/
 │   ├── fastp/
 │   ├── cutrun/
+│   ├── preseq/
 │   ├── spikein/
 │   └── multiqc/
 ├── bowtie2/
@@ -104,6 +107,7 @@ results/
 
 - The pipeline supports both **paired-end** (`read_type: PE`) and **single-end** (`read_type: SE`) samples.
 - When `filter_blacklist: true`, you must provide **either** `blacklist.path` **or** `blacklist.url`.
+- When `cutrun_qc.preseq.enabled: true`, preseq runs in a separate QC branch that forces fastp no-dedup and does not feed peak calling, bigWig, or other main outputs.
 - When `spikein.enabled: true`, `spikein.bowtie2_index` must point to a spike-in Bowtie2 index.
 - MultiQC scans `results/qc`, `results/bowtie2`, and `logs/` by default.
 

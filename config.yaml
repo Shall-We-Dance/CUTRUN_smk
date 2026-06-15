@@ -61,11 +61,12 @@ samples:
 
 # fastp settings
 fastp:
-  # QC + Illumina adapter trimming + dedup
+  # QC + Illumina adapter trimming + dedup for the main output workflow.
   dedup_adapter:
     # Set false to keep fastp QC/reporting but disable adapter trimming and dedup.
     enable: true
     # Only used when enable=true.
+    # The optional preseq QC branch ignores this setting and forces no fastp dedup.
     dedup: true
     # Optional raw fastp arguments, e.g. "--trim_poly_g".
     extra: ""
@@ -88,6 +89,8 @@ generate_multiqc: true
 # CUT&RUN/CUT&Tag-specific QC
 cutrun_qc:
   enabled: true
+  # Optional side-branch QC: raw merge -> fastp without dedup -> bowtie2 -> preseq.
+  # This branch does not feed peak calling, bigWig, or other main outputs.
   preseq:
     enabled: true
 
