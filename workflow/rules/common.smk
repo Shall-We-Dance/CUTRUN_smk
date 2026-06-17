@@ -166,6 +166,10 @@ def preseq_path(sample):
     return f"{OUTDIR}/qc/cutrun/{sample}/{sample}.preseq.lc_extrap.txt"
 
 
+def preseq_status_path(sample):
+    return f"{OUTDIR}/qc/cutrun/{sample}/{sample}.preseq.status.tsv"
+
+
 def cutrun_qc_summary_path():
     return f"{OUTDIR}/qc/cutrun/cutrun_qc_summary.tsv"
 
@@ -179,6 +183,7 @@ def cutrun_qc_paths(sample):
     ]
     if PRESEQ_ENABLED:
         paths.append(preseq_path(sample))
+        paths.append(preseq_status_path(sample))
     return paths
 
 

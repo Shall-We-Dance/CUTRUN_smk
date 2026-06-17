@@ -295,7 +295,8 @@ if CUTRUN_QC_ENABLED:
                 bam=lambda wc: preseq_input_bam_path(wc.sample),
                 bai=lambda wc: preseq_input_bai_path(wc.sample)
             output:
-                txt=preseq_path("{sample}")
+                txt=preseq_path("{sample}"),
+                status=preseq_status_path("{sample}")
             params:
                 pe_arg="" if is_single_end() else "-pe"
             log:
@@ -303,18 +304,15 @@ if CUTRUN_QC_ENABLED:
             threads: 1
             conda:
                 "envs/cutrun_qc.yaml"
-            shell:
-                r"""
-                set -euo pipefail
-                mkdir -p $(dirname {output.txt}) $(dirname {log})
-                preseq lc_extrap {params.pe_arg} -output {output.txt} {input.bam} > {log} 2>&1
-                """
+            script:
+                "scripts/run_preseq_lc_extrap.py"
 
     rule summarize_cutrun_qc:
         input:
             usable=[cutrun_usable_fragments_path(sample) for sample in SAMPLES],
             fragments=[fragment_length_path(sample) for sample in SAMPLES],
             preseq=[preseq_path(sample) for sample in SAMPLES] if PRESEQ_ENABLED else [],
+            preseq_status=[preseq_status_path(sample) for sample in SAMPLES] if PRESEQ_ENABLED else [],
             spikein=[spikein_scale_factors_path()] if SPIKEIN_ENABLED else []
         output:
             tsv=cutrun_qc_summary_path()

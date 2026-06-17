@@ -108,6 +108,7 @@ results/
 - The pipeline supports both **paired-end** (`read_type: PE`) and **single-end** (`read_type: SE`) samples.
 - When `filter_blacklist: true`, you must provide **either** `blacklist.path` **or** `blacklist.url`.
 - When `cutrun_qc.preseq.enabled: true`, preseq runs in a separate QC branch that forces fastp no-dedup and does not feed peak calling, bigWig, or other main outputs.
+- If preseq cannot fit a complexity curve for one sample because the duplicate count distribution is insufficient, the pipeline records `SKIPPED_INSUFFICIENT_COUNTS` in `<sample>.preseq.status.tsv` and continues.
 - When `spikein.enabled: true`, `spikein.bowtie2_index` must point to a spike-in Bowtie2 index.
 - MultiQC scans `results/qc`, `results/bowtie2`, and `logs/` by default.
 

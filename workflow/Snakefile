@@ -39,6 +39,7 @@ if CUTRUN_QC_ENABLED:
     PRIMARY_TARGETS += [fragment_length_path(sample) for sample in SAMPLES]
     if PRESEQ_ENABLED:
         PRIMARY_TARGETS += [preseq_path(sample) for sample in SAMPLES]
+        PRIMARY_TARGETS += [preseq_status_path(sample) for sample in SAMPLES]
     PRIMARY_TARGETS.append(cutrun_qc_summary_path())
 if MACS3_ENABLED:
     PRIMARY_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_peaks.narrowPeak", sample=SAMPLES)
