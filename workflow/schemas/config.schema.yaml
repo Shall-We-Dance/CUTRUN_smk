@@ -182,12 +182,6 @@ properties:
     properties:
       enabled:
         type: boolean
-      preseq:
-        type: object
-        additionalProperties: true
-        properties:
-          enabled:
-            type: boolean
   spikein:
     type: object
     additionalProperties: true

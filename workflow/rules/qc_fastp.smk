@@ -8,18 +8,32 @@ def units(sample):
     return list(range(len(config["samples"][sample]["R1"])))
 
 
-def fastp_extra_args(force_dedup=None):
+def fastp_extra_args():
     dedup_adapter = config.get("fastp", {}).get("dedup_adapter", {})
     if not bool(dedup_adapter.get("enable", True)):
         return "--disable_adapter_trimming"
 
     args = []
-    dedup = bool(dedup_adapter.get("dedup", True)) if force_dedup is None else bool(force_dedup)
-    if dedup:
+    if bool(dedup_adapter.get("dedup", True)):
         args.append("--dedup")
     if dedup_adapter.get("extra"):
         args.append(str(dedup_adapter["extra"]))
     return " ".join(args)
+
+
+def multiqc_search_paths():
+    paths = [
+        f"{OUTDIR}/qc/fastp",
+        f"{OUTDIR}/qc/bam_stats",
+        f"{OUTDIR}/bowtie2",
+        "logs/fastp",
+        "logs/bowtie2",
+    ]
+    if CUTRUN_QC_ENABLED:
+        paths.extend([cutrun_qc_summary_path(), cutrun_fragment_lengths_multiqc_path(), "logs/cutrun_qc"])
+    if SPIKEIN_ENABLED:
+        paths.extend([f"{OUTDIR}/qc/spikein", "logs/spikein"])
+    return " ".join(paths)
 
 
 # ----------------------------
@@ -129,7 +143,7 @@ rule multiqc:
         [path for sample in SAMPLES for path in bam_flagstat_paths(sample)],
         [duplicate_metrics_path(sample) for sample in SAMPLES] if REMOVE_DUPLICATES else [],
         [path for sample in SAMPLES for path in cutrun_qc_paths(sample)],
-        [cutrun_qc_summary_path()] if CUTRUN_QC_ENABLED else [],
+        [cutrun_qc_summary_path(), cutrun_fragment_lengths_multiqc_path()] if CUTRUN_QC_ENABLED else [],
         [path for sample in SAMPLES for path in spikein_qc_paths(sample)],
         [spikein_scale_factors_path()] if SPIKEIN_ENABLED else []
     output:
@@ -139,9 +153,11 @@ rule multiqc:
     threads: 1
     conda:
         "envs/multiqc.yaml"
+    params:
+        search_paths=multiqc_search_paths()
     shell:
         r"""
         set -euo pipefail
         mkdir -p $(dirname {output.html}) $(dirname {log})
-        multiqc --force -o {OUTDIR}/qc/multiqc {OUTDIR}/qc {OUTDIR}/bowtie2 logs > {log} 2>&1
+        multiqc --force -o {OUTDIR}/qc/multiqc {params.search_paths} > {log} 2>&1
         """

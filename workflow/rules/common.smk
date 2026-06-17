@@ -10,7 +10,6 @@ FILTER_BLACKLIST = bool(config.get("filter_blacklist", False))
 REMOVE_DUPLICATES = bool(config.get("remove_duplicates", True))
 KEEP_BAM = bool(config.get("keep_bam", False))
 CUTRUN_QC_ENABLED = bool(config.get("cutrun_qc", {}).get("enabled", True))
-PRESEQ_ENABLED = bool(config.get("cutrun_qc", {}).get("preseq", {}).get("enabled", True))
 SPIKEIN_ENABLED = bool(config.get("spikein", {}).get("enabled", False))
 SPIKEIN_BIGWIG_ENABLED = (
     SPIKEIN_ENABLED and bool(config.get("spikein", {}).get("generate_bigwig", True))
@@ -63,50 +62,6 @@ def final_bam_path(sample):
 
 def final_bai_path(sample):
     return final_bam_path(sample) + ".bai"
-
-
-def preseq_clean_r1_path(sample):
-    return f"{OUTDIR}/tmp/preseq_fastp/{sample}_R1.fastq.gz"
-
-
-def preseq_clean_r2_path(sample):
-    return f"{OUTDIR}/tmp/preseq_fastp/{sample}_R2.fastq.gz"
-
-
-def preseq_aligned_bam_path(sample):
-    suffix = "se" if is_single_end() else "pe"
-    return f"{OUTDIR}/qc/preseq/{sample}/{sample}.preseq_{suffix}.bam"
-
-
-def preseq_aligned_flagstat_path(sample):
-    suffix = "se" if is_single_end() else "pe"
-    return f"{OUTDIR}/qc/preseq/{sample}/{sample}.preseq_{suffix}.flagstat.txt"
-
-
-def preseq_unique_bam_path(sample):
-    return f"{OUTDIR}/qc/preseq/{sample}/{sample}.preseq.unique.bam"
-
-
-def preseq_unique_flagstat_path(sample):
-    return f"{OUTDIR}/qc/preseq/{sample}/{sample}.preseq.unique.flagstat.txt"
-
-
-def preseq_filtered_bam_path(sample):
-    return f"{OUTDIR}/qc/preseq/{sample}/{sample}.preseq.unique.filtered.bam"
-
-
-def preseq_filtered_flagstat_path(sample):
-    return f"{OUTDIR}/qc/preseq/{sample}/{sample}.preseq.unique.filtered.flagstat.txt"
-
-
-def preseq_input_bam_path(sample):
-    if FILTER_BLACKLIST:
-        return preseq_filtered_bam_path(sample)
-    return preseq_unique_bam_path(sample)
-
-
-def preseq_input_bai_path(sample):
-    return preseq_input_bam_path(sample) + ".bai"
 
 
 def is_single_end():
@@ -162,16 +117,12 @@ def fragment_length_path(sample):
     return f"{OUTDIR}/qc/cutrun/{sample}/{sample}.fragment_lengths.tsv"
 
 
-def preseq_path(sample):
-    return f"{OUTDIR}/qc/cutrun/{sample}/{sample}.preseq.lc_extrap.txt"
-
-
-def preseq_status_path(sample):
-    return f"{OUTDIR}/qc/cutrun/{sample}/{sample}.preseq.status.tsv"
-
-
 def cutrun_qc_summary_path():
     return f"{OUTDIR}/qc/cutrun/cutrun_qc_summary.tsv"
+
+
+def cutrun_fragment_lengths_multiqc_path():
+    return f"{OUTDIR}/qc/cutrun/fragment_lengths_mqc.json"
 
 
 def cutrun_qc_paths(sample):
@@ -181,9 +132,6 @@ def cutrun_qc_paths(sample):
         cutrun_usable_fragments_path(sample),
         fragment_length_path(sample),
     ]
-    if PRESEQ_ENABLED:
-        paths.append(preseq_path(sample))
-        paths.append(preseq_status_path(sample))
     return paths
 
 
