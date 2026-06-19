@@ -30,7 +30,7 @@ def read_spikein_table(path):
 
 
 def read_fragment_lengths(path):
-    points = []
+    counts = {}
     with open(path, "r", encoding="utf-8") as handle:
         header = handle.readline().rstrip("\n").split("\t")
         if header != ["fragment_length", "count"]:
@@ -39,8 +39,9 @@ def read_fragment_lengths(path):
             if not line.strip():
                 continue
             fragment_length, count = line.rstrip("\n").split("\t", 1)
-            points.append([int(fragment_length), int(count)])
-    return points
+            length = str(int(fragment_length))
+            counts[length] = counts.get(length, 0) + int(count)
+    return counts
 
 
 usable_paths = list(snakemake.input.usable)
