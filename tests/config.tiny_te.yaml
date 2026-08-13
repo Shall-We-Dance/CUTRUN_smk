@@ -1,0 +1,92 @@
+genome: tiny
+analysis_mode: te
+read_type: PE
+threads:
+  fastp: 2
+  bowtie2: 4
+  samtools: 2
+  deeptools: 2
+  dedup: 2
+reference:
+  bowtie2_index: tests/data/tiny_ref
+  chrom_sizes: tests/data/tiny.chrom.sizes
+  fasta: tests/data/tiny_ref.fa
+filter_blacklist: true
+blacklist:
+  cache_dir: tests/data
+  path: tests/data/tiny_blacklist.bed
+remove_duplicates: true
+dedup_method: picard
+keep_bam: true
+samtools_exclude_flags: 1804
+bedtools_nonamecheck: true
+samples:
+  Tiny_ChIP:
+    control: Tiny_INPUT
+    control_replicates: {rep1: input_a}
+    replicates:
+      rep1:
+        R1:
+        - tests/data/tiny_R1.fastq.gz
+        R2:
+        - tests/data/tiny_R2.fastq.gz
+  Tiny_INPUT:
+    replicates:
+      input_a:
+        R1:
+        - tests/data/tiny_R1.fastq.gz
+        R2:
+        - tests/data/tiny_R2.fastq.gz
+    call_peaks: false
+fastp:
+  dedup_adapter:
+    enable: true
+    dedup: false
+    extra: ''
+bowtie2:
+  max_insert_size: 500
+  mode: very-sensitive
+  keep_multimappers: true
+  k: 100
+  mapq_threshold: 20
+  extra: ''
+output:
+  dir: tests/out_tiny_te
+generate_multiqc: false
+cutrun_qc:
+  enabled: true
+spikein:
+  enabled: false
+  bowtie2_index: /path/to/spikein/bowtie2/index
+  scale_to: 10000
+  min_fragments: 1000
+  generate_bigwig: true
+macs3:
+  enabled: true
+  gsize: 10000
+  qvalue: 0.05
+  extsize: 100
+  keep_dup: all
+  broad: false
+  broad_cutoff: 0.1
+bigwig:
+  bin_size: 5
+  normalization: RPKM
+  samtools_exclude_flags: 1804
+  remove_chrM_and_scaffolds: false
+generate_raw_bigwig: true
+generate_normalized_bigwig: true
+te:
+  annotation: tests/data/tiny_TE.bed
+  k: 100
+  exclude_flags: 516
+  remove_duplicates: false
+  blacklist: full
+  generate_bigwig: true
+  bin_size: 5
+  normalization: RPKM
+  class_column: 7
+  subfamily_column: 8
+  family_column: 9
+  min_overlap_frac: 0.0
+  min_overlap_bp: 1

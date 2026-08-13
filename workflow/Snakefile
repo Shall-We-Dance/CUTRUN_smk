@@ -2,7 +2,12 @@ import os
 from snakemake.utils import min_version, validate
 min_version("9.3.3")
 
-configfile: "config.yaml"
+# Configuration is passed explicitly via --configfile (project configs or
+# tests). A default here would be merged with --configfile values and can
+# silently override sample lists when running tests.
+if not config:
+    raise SystemExit("No config provided. Run with --configfile <project.yaml>")
+
 validate(config, "schemas/config.schema.yaml")
 
 include: "rules/common.smk"
@@ -12,6 +17,7 @@ include: "rules/spikein.smk"
 include: "rules/bam_to_bigwig.smk"
 include: "rules/macs3.smk"
 include: "rules/cutrun_qc.smk"
+include: "rules/te_analysis.smk"
 
 MULTIQC_TARGET = (
     f"{OUTDIR}/qc/multiqc/multiqc_report.html"
@@ -19,29 +25,63 @@ MULTIQC_TARGET = (
     else None
 )
 
+PEAK_SAMPLES = [
+    sample
+    for sample in SAMPLES
+    if config["samples"][sample].get("call_peaks", True)
+]
+
 PRIMARY_TARGETS = []
-PRIMARY_TARGETS += expand(f"{OUTDIR}/qc/fastp/{{sample}}/fastp.html", sample=SAMPLES)
-PRIMARY_TARGETS += expand(f"{OUTDIR}/qc/fastp/{{sample}}/fastp.json", sample=SAMPLES)
+PRIMARY_TARGETS += expand(fastp_html("{run_sample}"), run_sample=RUN_SAMPLES)
+PRIMARY_TARGETS += expand(fastp_json("{run_sample}"), run_sample=RUN_SAMPLES)
 if MULTIQC_TARGET:
     PRIMARY_TARGETS.append(MULTIQC_TARGET)
 if KEEP_BAM:
-    PRIMARY_TARGETS += [final_bam_path(sample) for sample in SAMPLES]
-    PRIMARY_TARGETS += [final_bai_path(sample) for sample in SAMPLES]
-PRIMARY_TARGETS += expand(f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.raw.bw", sample=SAMPLES)
-PRIMARY_TARGETS += expand(f"{OUTDIR}/bigwig/{{sample}}/{{sample}}.normalized.bw", sample=SAMPLES)
+    PRIMARY_TARGETS += [final_bam_path(run_sample) for run_sample in RUN_SAMPLES]
+    PRIMARY_TARGETS += [final_bai_path(run_sample) for run_sample in RUN_SAMPLES]
+if GENERATE_RAW_BIGWIG:
+    PRIMARY_TARGETS += expand(raw_bigwig_path("{run_sample}"), run_sample=RUN_SAMPLES)
+if GENERATE_NORMALIZED_BIGWIG:
+    PRIMARY_TARGETS += expand(normalized_bigwig_path("{run_sample}"), run_sample=RUN_SAMPLES)
+    PRIMARY_TARGETS += [pooled_normalized_bigwig_path(sample) for sample in SAMPLES]
 if SPIKEIN_ENABLED:
-    PRIMARY_TARGETS += [spikein_scale_factor_path(sample) for sample in SAMPLES]
+    PRIMARY_TARGETS += [spikein_scale_factor_path(run_sample) for run_sample in RUN_SAMPLES]
     PRIMARY_TARGETS.append(spikein_scale_factors_path())
     if SPIKEIN_BIGWIG_ENABLED:
-        PRIMARY_TARGETS += [spikein_normalized_bigwig_path(sample) for sample in SAMPLES]
+        PRIMARY_TARGETS += [spikein_normalized_bigwig_path(run_sample) for run_sample in RUN_SAMPLES]
 if CUTRUN_QC_ENABLED:
-    PRIMARY_TARGETS += [cutrun_usable_fragments_path(sample) for sample in SAMPLES]
-    PRIMARY_TARGETS += [fragment_length_path(sample) for sample in SAMPLES]
+    PRIMARY_TARGETS += [cutrun_usable_fragments_path(run_sample) for run_sample in RUN_SAMPLES]
+    PRIMARY_TARGETS += [fragment_length_path(run_sample) for run_sample in RUN_SAMPLES]
     PRIMARY_TARGETS.append(cutrun_qc_summary_path())
 if MACS3_ENABLED:
-    PRIMARY_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_peaks.narrowPeak", sample=SAMPLES)
-    PRIMARY_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_summits.bed", sample=SAMPLES)
-    PRIMARY_TARGETS += expand(f"{OUTDIR}/macs3/{{sample}}/{{sample}}_peaks.xls", sample=SAMPLES)
+    PEAK_RUN_SAMPLES = [
+        rs
+        for rs in RUN_SAMPLES
+        if config["samples"][sample_of(rs)].get("call_peaks", True)
+    ]
+    PRIMARY_TARGETS += [macs3_narrow_path(rs) for rs in PEAK_RUN_SAMPLES]
+    PRIMARY_TARGETS += [macs3_summits_path(rs) for rs in PEAK_RUN_SAMPLES]
+    PRIMARY_TARGETS += [macs3_xls_path(rs) for rs in PEAK_RUN_SAMPLES]
+    PRIMARY_TARGETS += [macs3_narrow_path(sample, pooled=True) for sample in PEAK_SAMPLES]
+    PRIMARY_TARGETS += [macs3_summits_path(sample, pooled=True) for sample in PEAK_SAMPLES]
+    PRIMARY_TARGETS += [replicate_concordance_path(sample) for sample in PEAK_SAMPLES]
+    PRIMARY_TARGETS += [macs3_consensus_path(sample) for sample in PEAK_SAMPLES if len(REPLICATES[sample]) >= 2]
+    PRIMARY_TARGETS += [frip_path(rs) for rs in PEAK_RUN_SAMPLES]
+    PRIMARY_TARGETS += [frip_path(sample, pooled=True) for sample in PEAK_SAMPLES]
+    PRIMARY_TARGETS.append(frip_summary_path())
+if TE_ENABLED:
+    for run_sample in RUN_SAMPLES:
+        PRIMARY_TARGETS += te_paths(run_sample)
+    if TE_ANNOTATION:
+        PRIMARY_TARGETS.append(te_overlap_summary_path())
+        PRIMARY_TARGETS.append(te_overlap_mqc_path())
+        PRIMARY_TARGETS.append(te_enrichment_path())
+        PRIMARY_TARGETS.append(te_enrichment_path().replace(".tsv", ".curated.tsv"))
+        PRIMARY_TARGETS.append(te_enrichment_path().replace(".tsv", ".novel.tsv"))
+        PRIMARY_TARGETS.append(te_enrichment_path().replace(".tsv", ".unknown.tsv"))
+        PRIMARY_TARGETS.append(te_enrichment_path().replace(".tsv", ".subclass.tsv"))
+        if TE_BLACKLIST_MODE == "full" and FILTER_BLACKLIST:
+            PRIMARY_TARGETS.append(te_blacklist_lowconf_path())
 
 rule all:
     input:

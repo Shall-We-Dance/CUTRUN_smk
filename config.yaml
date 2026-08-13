@@ -1,123 +1,214 @@
 # workflow/config.yaml
-genome: dm6   # genome label for reporting/logging
+# CUT&RUN / CUT&Tag / ChIP-seq configuration
 
-# Read type: PE (paired-end) or SE (single-end)
+genome: example_genome  # Genome label used in reports and logs.
+
+# Analysis mode:
+#   standard = unique-mapper analysis (recommended default)
+#   te       = additionally retain multimappers and quantify TE families
+analysis_mode: standard
+
+# Read type: PE (paired-end) or SE (single-end).
+# For SE data, omit every R2 entry under samples.
 read_type: "PE"
 
+# Rule-level CPU requests. Snakemake reduces them when --cores is lower.
 threads:
   fastp: 8
   bowtie2: 16
   samtools: 8
   deeptools: 8
+  dedup: 4
 
-# Reference & index
+# samtools sort memory is per worker, not total memory for the job.
+samtools_sort_memory: "512M"
+picard_java_mem: "4g"
+
+# Reference and Bowtie2 index.
 reference:
-  bowtie2_index: "/path/to/genome/bowtie2/dm6"
-  chrom_sizes: "/path/to/genome/dm6.chrom.sizes"
-  fasta: "/path/to/genome.fa"
+  # Prefix shared by genome.1.bt2, genome.2.bt2, etc. Do not include .1.bt2.
+  bowtie2_index: "resources/reference/genome"
+  # Two-column TSV: chromosome<TAB>length.
+  chrom_sizes: "resources/reference/genome.chrom.sizes"
+  # Uncompressed FASTA. The workflow creates the .fai index when necessary.
+  fasta: "resources/reference/genome.fa"
 
-# Enable blacklist filtering (requires blacklist.path or blacklist.url)
+# Enable blacklist filtering for the standard/unique-mapper branch.
 filter_blacklist: true
 
-# Blacklist (manual)
-# Boyle-Lab blacklist repository (examples):
-#   https://github.com/Boyle-Lab/Blacklist
-#   https://github.com/Boyle-Lab/Blacklist/tree/master/lists
+# Blacklist input. Provide either path or url.
 blacklist:
+  path: "resources/blacklist/genome.blacklist.bed"
+  # url: "https://example.org/genome.blacklist.bed.gz"
+  # e.g.  "https://raw.githubusercontent.com/Boyle-Lab/Blacklist/master/lists/dm6-blacklist.v2.bed.gz"
   cache_dir: "resources/blacklist"
-  # Provide exactly one of the following:
-  # path: "/path/to/custom.blacklist.bed"
-  # url: "https://raw.githubusercontent.com/Boyle-Lab/Blacklist/master/lists/dm6-blacklist.v2.bed.gz"
 
-# Remove PCR duplicates
+# Remove PCR duplicates from the standard/unique-mapper branch.
 remove_duplicates: true
-dedup_method: "picard"  # Options: picard, samtools
+dedup_method: "picard"  # Options: picard, samtools.
 
-# Keep BAM outputs (.bam/.unique.bam/.filtered.bam). Default false to save space.
-keep_bam: false
+# Keep final per-replicate BAM/BAI outputs.
+keep_bam: true
 
-# Samtools filtering flags
-samtools_exclude_flags: 1804  # exclude unmapped, not primary, fails QC, duplicate
+# Exclude unmapped, mate-unmapped, secondary, QC-fail, and alignments already
+# flagged as duplicates. Newly detected duplicates are handled downstream.
+samtools_exclude_flags: 1804
 
-# Bedtools parameters for blacklist filtering
-bedtools_nonamecheck: true  # Skip chromosome name checking
+# Allow chromosome naming-style differences in bedtools.
+bedtools_nonamecheck: true
 
-# Samples: multiple technical replicates (or lanes) under one sample
+# Samples and biological replicates.
+#
+# R1 and R2 are lists and CAN contain multiple sequencing lanes. Corresponding
+# R1/R2 lists must have the same length and lane order. Lanes are concatenated
+# within a biological replicate before sample-level QC/alignment.
+#
+# Sample and replicate names must not contain a period because the workflow
+# creates internal names as <sample>.<replicate>.
 samples:
-  sampleA:
-    R1:
-      - "raw/sampleA_L001_R1.fastq.gz"
-      - "raw/sampleA_L002_R1.fastq.gz"
-    R2:
-      - "raw/sampleA_L001_R2.fastq.gz"
-      - "raw/sampleA_L002_R2.fastq.gz"
+  Example_IP:
+    control: Example_INPUT
 
-  sampleB:
-    R1:
-      - "raw/sampleB_R1.fastq.gz"
-    R2:
-      - "raw/sampleB_R2.fastq.gz"
-  # For SE (single-end) input, provide only R1 entries per sample (omit R2).
+    # Optional mapping from each IP replicate to its matched input replicate.
+    # Omit this block when IP and input replicate names are identical.
+    control_replicates:
+      rep1: input_a
+      rep2: input_b
 
-# fastp settings
+    replicates:
+      rep1:
+        # Two lanes from the same biological replicate:
+        R1:
+          - "raw/example_ip_rep1_L001_R1.fastq.gz"
+          - "raw/example_ip_rep1_L002_R1.fastq.gz"
+        R2:
+          - "raw/example_ip_rep1_L001_R2.fastq.gz"
+          - "raw/example_ip_rep1_L002_R2.fastq.gz"
+      rep2:
+        # A replicate may also contain only one lane:
+        R1:
+          - "raw/example_ip_rep2_L001_R1.fastq.gz"
+        R2:
+          - "raw/example_ip_rep2_L001_R2.fastq.gz"
+
+    # Optional per-sample MACS3 overrides.
+    macs3:
+      broad: false
+
+  Example_INPUT:
+    call_peaks: false
+    replicates:
+      input_a:
+        R1:
+          - "raw/example_input_a_L001_R1.fastq.gz"
+          - "raw/example_input_a_L002_R1.fastq.gz"
+        R2:
+          - "raw/example_input_a_L001_R2.fastq.gz"
+          - "raw/example_input_a_L002_R2.fastq.gz"
+      input_b:
+        R1:
+          - "raw/example_input_b_L001_R1.fastq.gz"
+        R2:
+          - "raw/example_input_b_L001_R2.fastq.gz"
+
+# fastp settings.
 fastp:
-  # QC + Illumina adapter trimming + dedup for the main output workflow.
   dedup_adapter:
-    # Set false to keep fastp QC/reporting but disable adapter trimming and dedup.
-    enable: true
-    # Only used when enable=true.
-    dedup: true
-    # Optional raw fastp arguments, e.g. "--trim_poly_g".
-    extra: ""
+    enable: true   # Adapter trimming on/off; QC reports are still generated.
+    dedup: false   # FASTQ-level deduplication is disabled by default.
+    extra: ""      # Optional additional fastp arguments.
 
-# bowtie2 alignment settings
+# Bowtie2 alignment settings.
 bowtie2:
+  min_insert_size: 10
   max_insert_size: 500
-  mode: "very-sensitive"  # Options: very-fast, fast, sensitive, very-sensitive
-  keep_multimappers: false  # Set to true to keep multi-mapped reads
-  mapq_threshold: 30  # Minimum MAPQ score for unique mapping
-  extra: ""  # optional additional args
+  mode: "very-sensitive"  # very-fast, fast, sensitive, or very-sensitive.
+  keep_multimappers: false # Standard-mode setting; TE mode retains them.
+  k: 1                     # Standard-mode multimapper limit, if enabled.
+  mapq_threshold: 30
+  extra: ""
 
-# Output naming
+# Output directory. Use a different directory for each parameter-sensitivity
+# run; logs are stored inside this directory as <output.dir>/logs/.
 output:
   dir: "results"
 
-# Generate summary reports
+# Generate summary reports.
 generate_multiqc: true
 
-# CUT&RUN/CUT&Tag-specific QC
+# CUT&RUN/CUT&Tag-specific QC.
 cutrun_qc:
   enabled: true
 
 # Optional spike-in normalization.
-# When enabled, cleaned reads are aligned to the spike-in genome, per-sample scale
-# factors are written to results/qc/spikein/, and spike-in scaled bigWigs are
-# generated as <sample>.spikein_normalized.bw.
 spikein:
   enabled: false
-  bowtie2_index: "/path/to/spikein/bowtie2/index"
+  bowtie2_index: "resources/spikein/spikein_genome"
   scale_to: 10000
   min_fragments: 1000
   generate_bigwig: true
 
-# MACS3 peak calling
+# MACS3 peak calling.
 macs3:
   enabled: true
-  gsize: "dm"  # Effective genome size: hs, mm, ce, dm
-  qvalue: 0.05  # Q-value cutoff
-  extsize: 200  # Fragment extension size
-  broad: false  # Set true for broad peak calling (H3K27me3, etc.)
-  broad_cutoff: 0.1  # Broad peak cutoff (only used if macs3.broad=true)
+  gsize: "1.2e8"       # Effective genome size or MACS3 shortcut (hs/mm/ce/dm).
+  qvalue: 0.05
+  extsize: 200
+  # The upstream BAM is deduplicated when remove_duplicates=true. Using all
+  # avoids applying a second coordinate-level duplicate cutoff in MACS3.
+  keep_dup: "all"      # all, auto, or a positive integer.
+  broad: false
+  broad_cutoff: 0.1
+  nomodel: true
 
-# ----------------------------------------------------------------------------
-# BigWig Generation
-# ----------------------------------------------------------------------------
+# BigWig generation.
 bigwig:
-  bin_size: 10  # Bin size for coverage tracks
-  normalization: "RPKM"  # Options: RPKM, CPM, BPM, RPGC, None
-  samtools_exclude_flags: 1804  # Default: exclude unmapped, secondary, QC fail, duplicates
-  remove_chrM_and_scaffolds: true  # Exclude chrM/MT/M and scaffold-like contigs for bigWig
+  bin_size: 10
+  normalization: "RPKM"  # RPKM, CPM, BPM, RPGC, or None.
+  samtools_exclude_flags: 1804
+  remove_chrM_and_scaffolds: true
 
-# Generate both normalized and unnormalized bigWig files
 generate_raw_bigwig: true
 generate_normalized_bigwig: true
+
+# ----------------------------------------------------------------------------
+# TE-aware analysis settings
+# ----------------------------------------------------------------------------
+# This section is used only when analysis_mode: te. TE mode keeps the standard
+# unique-mapper branch and adds a separate all-alignment branch for TE analysis.
+te:
+  # BED6+ TE annotation. Column numbers below are 1-based.
+  annotation: "resources/te/genome.te.bed"
+  family_column: 9
+  subfamily_column: 8
+  class_column: 7
+
+  # Number of alignments reported per template. Larger values increase BAM
+  # size/runtime; compare several k values before publication-level inference.
+  k: 100
+
+  # Exclude unmapped (4) and QC-fail (512), while retaining secondary (256)
+  # alignments so multimappers contribute to 1/N weighting.
+  exclude_flags: 516
+
+  # Recommended primary TE analysis retains duplicates. Coordinate duplicate
+  # removal can erase genuine enrichment in repetitive regions. Test true as a
+  # separate sensitivity analysis when appropriate.
+  remove_duplicates: false
+
+  # none = do not blacklist the TE branch; full = apply the complete blacklist.
+  # The standard unique-mapper branch still follows filter_blacklist above.
+  blacklist: "none"
+
+  min_overlap_bp: 1
+  min_overlap_frac: 0.0
+
+  # Diagnostic alignment-count track; not a family abundance track.
+  generate_bigwig: true
+  bin_size: 10
+  normalization: "RPKM"
+
+  # Optional but recommended TSV: Dfam accession<TAB>family name<...>.
+  # Verified names are curated; unmatched names remain unknown. Comment this
+  # setting out if no metadata table is available.
+  dfam_metadata: "resources/te/dfam_metadata.tsv"

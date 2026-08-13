@@ -10,9 +10,64 @@ required:
 properties:
   genome:
     type: string
+  analysis_mode:
+    type: string
+    enum: ["standard", "te"]
   read_type:
     type: string
     enum: ["PE", "SE"]
+  samtools_sort_memory:
+    type: string
+    pattern: "^[0-9]+([KMGTP]i?B?|[kmg])$"
+  picard_java_mem:
+    type: string
+  te:
+    type: object
+    additionalProperties: true
+    required:
+      - annotation
+    properties:
+      annotation:
+        type: string
+      k:
+        type: integer
+        minimum: 1
+      exclude_flags:
+        type: integer
+        minimum: 0
+      remove_duplicates:
+        type: boolean
+      blacklist:
+        type: string
+        enum: ["none", "full"]
+      generate_bigwig:
+        type: boolean
+      bin_size:
+        type: integer
+        minimum: 1
+      normalization:
+        type: string
+      class_column:
+        type: integer
+        minimum: 1
+      subfamily_column:
+        type: integer
+        minimum: 1
+      family_column:
+        type: integer
+        minimum: 1
+      min_overlap_frac:
+        type: number
+        minimum: 0
+        maximum: 1
+      min_overlap_bp:
+        type: integer
+        minimum: 1
+      dfam_metadata:
+        type: string
+        description: >-
+          TSV (accession, name, ...) mapping TE family names to Dfam
+          accessions, used to classify curated vs novel vs unknown families.
   threads:
     type: object
     additionalProperties:
@@ -34,6 +89,9 @@ properties:
         type: integer
         minimum: 1
       deeptools:
+        type: integer
+        minimum: 1
+      dedup:
         type: integer
         minimum: 1
   reference:
@@ -84,20 +142,75 @@ properties:
       type: object
       additionalProperties: true
       required:
-        - R1
+        - replicates
       properties:
-        R1:
-          type: array
-          minItems: 1
-          items:
+        replicates:
+          type: object
+          minProperties: 1
+          additionalProperties:
+            type: object
+            additionalProperties: true
+            required:
+              - R1
+            properties:
+              R1:
+                type: array
+                minItems: 1
+                items:
+                  type: string
+                  minLength: 1
+              R2:
+                type: array
+                minItems: 1
+                items:
+                  type: string
+                  minLength: 1
+        control:
+          type: string
+        control_replicate:
+          type: [string, "null"]
+          description: >-
+            Optional explicit replicate mapping of the matched input/control
+            (e.g. "rep1"). When omitted, the same replicate name as the ChIP
+            replicate is assumed. Set to "pooled" to use the pooled control
+            for every ChIP replicate.
+        control_replicates:
+          type: object
+          additionalProperties:
             type: string
-            minLength: 1
-        R2:
-          type: array
-          minItems: 1
-          items:
-            type: string
-            minLength: 1
+          description: >-
+            Preferred explicit mapping from each ChIP replicate name to a
+            control replicate name (or "pooled"). This is validated before
+            DAG construction and is used by both MACS3 and TE enrichment.
+        call_peaks:
+          type: boolean
+        macs3:
+          type: object
+          additionalProperties: true
+          properties:
+            gsize:
+              type: [string, number]
+            qvalue:
+              type: number
+              minimum: 0
+              maximum: 1
+            extsize:
+              type: integer
+              minimum: 1
+            keep_dup:
+              anyOf:
+                - type: string
+                  enum: ["all", "auto"]
+                - type: integer
+                  minimum: 1
+            broad:
+              type: boolean
+            broad_cutoff:
+              type: number
+              minimum: 0
+              maximum: 1
+            nomodel:
+              type: boolean
   fastp:
     type: object
     additionalProperties: true
@@ -119,10 +232,16 @@ properties:
       max_insert_size:
         type: integer
         minimum: 1
+      min_insert_size:
+        type: integer
+        minimum: 0
       mode:
         type: string
       keep_multimappers:
         type: boolean
+      k:
+        type: integer
+        minimum: 1
       mapq_threshold:
         type: integer
         minimum: 0
@@ -150,14 +269,24 @@ properties:
       qvalue:
         type: number
         minimum: 0
+        maximum: 1
       extsize:
         type: integer
         minimum: 1
+      keep_dup:
+        anyOf:
+          - type: string
+            enum: ["all", "auto"]
+          - type: integer
+            minimum: 1
       broad:
         type: boolean
       broad_cutoff:
         type: number
         minimum: 0
+        maximum: 1
+      nomodel:
+        type: boolean
   bigwig:
     type: object
     additionalProperties: true

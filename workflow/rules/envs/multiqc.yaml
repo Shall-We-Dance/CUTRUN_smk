@@ -6,3 +6,4 @@ channels:
 dependencies:
   - multiqc=1.27
   - python=3.11
+  - rich=12.6.0
