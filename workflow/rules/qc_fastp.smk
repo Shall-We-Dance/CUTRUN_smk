@@ -3,10 +3,7 @@ import os
 
 
 def run_sample_parts_impl(run_sample):
-    parts = run_sample.rsplit(".", 1)
-    if len(parts) != 2:
-        return run_sample, ""
-    return parts[0], parts[1]
+    return run_sample_parts(run_sample)
 
 
 def units(run_sample):

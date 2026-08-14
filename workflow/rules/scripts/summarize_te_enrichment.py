@@ -108,9 +108,20 @@ def replicate_family_counts(sample):
     """Return dict replicate_name -> (counts, subfamilies, total_templates)."""
     reps = {}
     prefix = f"{sample}."
+    implicit = bool(
+        snakemake.config["samples"][sample].get("_implicit_single_replicate", False)
+    )
     for path in family_input:
         name = Path(path).name
-        if not name.startswith(prefix) or "family_counts" not in name:
+        if "family_counts" not in name:
+            continue
+        if implicit:
+            if Path(path).parent.name != sample:
+                continue
+            counts, subfams, n = read_family_counts(path)
+            reps["rep1"] = (counts, subfams, n or 0)
+            continue
+        if not name.startswith(prefix):
             continue
         rep = Path(path).parent.name
         if rep.startswith(prefix):

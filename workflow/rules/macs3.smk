@@ -161,8 +161,8 @@ if MACS3_ENABLED:
     rule pooled_control_bam_merge:
         """Merge replicate final BAMs of a sample into the pooled BAM."""
         input:
-            bams=lambda wc: [final_bam_path(f"{wc.sample}.{rep}") for rep in REPLICATES[wc.sample]],
-            bais=lambda wc: [final_bai_path(f"{wc.sample}.{rep}") for rep in REPLICATES[wc.sample]]
+            bams=lambda wc: [final_bam_path(run_sample_id(wc.sample, rep)) for rep in REPLICATES[wc.sample]],
+            bais=lambda wc: [final_bai_path(run_sample_id(wc.sample, rep)) for rep in REPLICATES[wc.sample]]
         output:
             bam=pooled_final_bam_path("{sample}"),
             bai=pooled_final_bai_path("{sample}")
@@ -200,9 +200,9 @@ if MACS3_ENABLED:
         overlap, bp Jaccard); NOT the previous order-dependent intersect."""
         input:
             peaks=lambda wc: [
-                macs3_narrow_path(f"{wc.sample}.{rep}")
+                macs3_narrow_path(run_sample_id(wc.sample, rep))
                 for rep in REPLICATES[wc.sample]
-                if f"{wc.sample}.{rep}" in PEAK_RUN_SAMPLES
+                if run_sample_id(wc.sample, rep) in PEAK_RUN_SAMPLES
             ],
             pooled=macs3_narrow_path("{sample}", pooled=True)
         output:

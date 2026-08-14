@@ -10,6 +10,9 @@ required:
 properties:
   genome:
     type: string
+  assay_type:
+    type: string
+    enum: ["cutrun", "chipseq"]
   analysis_mode:
     type: string
     enum: ["standard", "te"]
@@ -144,6 +147,8 @@ properties:
       required:
         - replicates
       properties:
+        _implicit_single_replicate:
+          type: boolean
         replicates:
           type: object
           minProperties: 1

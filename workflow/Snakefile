@@ -8,6 +8,42 @@ min_version("9.3.3")
 if not config:
     raise SystemExit("No config provided. Run with --configfile <project.yaml>")
 
+
+def normalize_sample_layouts(workflow_config):
+    """Accept both flat single-sample and explicit-replicate layouts.
+
+    Flat input such as ``sample: {R1: [...], R2: [...]}`` becomes one implicit
+    replicate internally. The marker lets path helpers keep public output names
+    as ``sample`` rather than exposing an artificial ``sample.rep1`` suffix.
+    """
+    assay_aliases = {
+        "cut&run": "cutrun",
+        "cut_run": "cutrun",
+        "chip-seq": "chipseq",
+        "chip_seq": "chipseq",
+    }
+    assay_type = str(workflow_config.get("assay_type", "cutrun")).lower()
+    workflow_config["assay_type"] = assay_aliases.get(assay_type, assay_type)
+
+    for sample, sample_cfg in workflow_config.get("samples", {}).items():
+        if not isinstance(sample_cfg, dict):
+            continue
+        has_flat_reads = "R1" in sample_cfg or "R2" in sample_cfg
+        has_replicates = "replicates" in sample_cfg
+        if has_flat_reads and has_replicates:
+            raise ValueError(
+                f"samples.{sample}: use either direct R1/R2 or replicates, not both."
+            )
+        if has_flat_reads:
+            read_cfg = {}
+            for key in ("R1", "R2"):
+                if key in sample_cfg:
+                    read_cfg[key] = sample_cfg.pop(key)
+            sample_cfg["replicates"] = {"rep1": read_cfg}
+            sample_cfg["_implicit_single_replicate"] = True
+
+
+normalize_sample_layouts(config)
 validate(config, "schemas/config.schema.yaml")
 
 include: "rules/common.smk"

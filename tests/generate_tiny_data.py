@@ -9,8 +9,8 @@ is a slice of dm6 chr2L. We plant:
   - a read overlapping the blacklist interval
   - a read overlapping the TE interval
 
-Outputs under tests/data/: tiny_R1.fastq.gz, tiny_R2.fastq.gz,
-tiny_blacklist.bed, tiny_TE.bed, tiny.chrom.sizes.
+Outputs under tests/data/: tiny_R1.fastq.gz, tiny_R2.fastq.gz, a second lane
+with distinct query names, tiny_blacklist.bed, tiny_TE.bed, tiny.chrom.sizes.
 """
 import gzip
 import os
@@ -94,6 +94,18 @@ with open(os.path.join(DATA, "tiny_R2.fastq.gz"), "wb") as f:
     with gzip.open(f, "wt") as gz:
         for qname, r1, r2, start, desc in records:
             gz.write(f"@{qname}\n{r2}\n+\n{'I' * len(r1)}\n")
+
+# A second synthetic sequencing lane. Sequences intentionally match lane 1,
+# but query names are distinct so paired-read grouping remains well-defined
+# after lane concatenation. Coordinate duplicate removal can then behave as it
+# would for resequencing the same library.
+with gzip.open(os.path.join(DATA, "tiny_L002_R1.fastq.gz"), "wt") as f1, gzip.open(
+    os.path.join(DATA, "tiny_L002_R2.fastq.gz"), "wt"
+) as f2:
+    for qname, r1, r2, start, desc in records:
+        lane_qname = f"{qname}_L002"
+        f1.write(f"@{lane_qname}\n{r1}\n+\n{'I' * len(r1)}\n")
+        f2.write(f"@{lane_qname}\n{r2}\n+\n{'I' * len(r2)}\n")
 
 # blacklist + TE annotations (1-based BED)
 with open(os.path.join(DATA, "tiny_blacklist.bed"), "w") as out:

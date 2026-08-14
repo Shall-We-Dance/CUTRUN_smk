@@ -1,4 +1,5 @@
 genome: tiny
+assay_type: chipseq
 analysis_mode: te
 read_type: PE
 threads:

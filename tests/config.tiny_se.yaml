@@ -1,4 +1,5 @@
 genome: tiny
+assay_type: cutrun
 analysis_mode: standard
 read_type: SE
 threads:
@@ -22,18 +23,8 @@ samtools_exclude_flags: 1804
 bedtools_nonamecheck: true
 samples:
   Tiny_ChIP:
-    control: Tiny_INPUT
-    control_replicates: {rep1: input_a}
-    replicates:
-      rep1:
-        R1:
-        - tests/data/tiny_R1.fastq.gz
-  Tiny_INPUT:
-    replicates:
-      input_a:
-        R1:
-        - tests/data/tiny_R1.fastq.gz
-    call_peaks: false
+    R1:
+      - tests/data/tiny_R1.fastq.gz
 fastp:
   dedup_adapter:
     enable: true

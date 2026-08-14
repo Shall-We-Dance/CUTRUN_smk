@@ -53,12 +53,40 @@ snakemake --snakefile workflow/Snakefile \
 For parameter-sensitivity runs, use a different `output.dir` for every run so
 results and their associated logs cannot overwrite one another.
 
-## Sample and control model
+`assay_type` is optional and defaults to `cutrun`. Set it to `chipseq` for a
+ChIP-seq design. This does not force an Input/control or replicate labels: both
+remain optional for incomplete public datasets and simple experiments.
 
-Each sample contains one or more biological replicates. Multiple FASTQ paths
-inside a replicate are sequencing lanes and are concatenated in list order.
-For PE data, R1 and R2 lists must have equal lengths and matching lane order.
-Sample and replicate names must not contain a period.
+## Assay type, samples, lanes, and optional controls
+
+Assay type and analysis mode are independent:
+
+| Setting | Purpose | Default |
+| --- | --- | --- |
+| `assay_type: cutrun \| chipseq` | Describes the assay/sample design | `cutrun` |
+| `analysis_mode: standard \| te` | Selects unique-read or TE-aware mapping | `standard` |
+
+For a single biological sample, use the simple flat layout. A control/input and
+a replicate label are both optional. Multiple FASTQs are sequencing lanes and
+are concatenated in list order. For PE data, R1 and R2 lists must have equal
+lengths and matching lane order.
+
+```yaml
+samples:
+  Example_H3K4me3:
+    R1:
+      - data/example_L001_R1.fastq.gz
+      - data/example_L002_R1.fastq.gz
+    R2:
+      - data/example_L001_R2.fastq.gz
+      - data/example_L002_R2.fastq.gz
+```
+
+This produces outputs named with `Example_H3K4me3`, without an artificial
+`.rep1` suffix. MACS3 runs without `-c` when no control is configured.
+
+Use the explicit layout only when biological replicates and/or matched controls
+need to be represented:
 
 ```yaml
 samples:
@@ -96,7 +124,12 @@ samples:
 When IP and input replicate names are identical, omit `control_replicates`.
 Set a mapping value to `pooled` only when pooling controls is justified by the
 experimental design. The same mapping is used by MACS3 and TE enrichment, and
-invalid mappings fail before DAG construction.
+invalid mappings fail before DAG construction. Sample and explicit replicate
+names must not contain a period.
+
+Without a control, TE overlap and family-count tables are still produced, but
+ChIP/input enrichment tables contain headers only because enrichment cannot be
+estimated without a comparator.
 
 ## Standard versus TE mode
 

@@ -2,6 +2,11 @@
 # CUT&RUN / CUT&Tag / ChIP-seq configuration
 
 genome: example_genome  # Genome label used in reports and logs.
+# Assay type is optional and defaults to "cutrun" when omitted.
+# Use "chipseq" for ChIP-seq. Input/control and explicit replicate labels then
+# become available through the expanded sample form below, but remain optional.
+assay_type: cutrun
+
 
 # Analysis mode:
 #   standard = unique-mapper analysis (recommended default)
@@ -57,59 +62,59 @@ samtools_exclude_flags: 1804
 # Allow chromosome naming-style differences in bedtools.
 bedtools_nonamecheck: true
 
-# Samples and biological replicates.
+# Example 1 (active): routine CUT&RUN, one biological sample, no Input required.
+# Put R1/R2 directly under its name; no replicate label or control/input is required.
 #
 # R1 and R2 are lists and CAN contain multiple sequencing lanes. Corresponding
 # R1/R2 lists must have the same length and lane order. Lanes are concatenated
 # within a biological replicate before sample-level QC/alignment.
 #
-# Sample and replicate names must not contain a period because the workflow
-# creates internal names as <sample>.<replicate>.
+# For several biological replicates, use the advanced `replicates:` layout
+# documented in README.md. Sample and explicit replicate names cannot contain
+# a period.
 samples:
-  Example_IP:
-    control: Example_INPUT
-
-    # Optional mapping from each IP replicate to its matched input replicate.
-    # Omit this block when IP and input replicate names are identical.
-    control_replicates:
-      rep1: input_a
-      rep2: input_b
-
-    replicates:
-      rep1:
-        # Two lanes from the same biological replicate:
-        R1:
-          - "raw/example_ip_rep1_L001_R1.fastq.gz"
-          - "raw/example_ip_rep1_L002_R1.fastq.gz"
-        R2:
-          - "raw/example_ip_rep1_L001_R2.fastq.gz"
-          - "raw/example_ip_rep1_L002_R2.fastq.gz"
-      rep2:
-        # A replicate may also contain only one lane:
-        R1:
-          - "raw/example_ip_rep2_L001_R1.fastq.gz"
-        R2:
-          - "raw/example_ip_rep2_L001_R2.fastq.gz"
-
-    # Optional per-sample MACS3 overrides.
+  Example_H3K4me3:
+    R1:
+      - "raw/example_H3K4me3_L001_R1.fastq.gz"
+      - "raw/example_H3K4me3_L002_R1.fastq.gz"
+    R2:
+      - "raw/example_H3K4me3_L001_R2.fastq.gz"
+      - "raw/example_H3K4me3_L002_R2.fastq.gz"
     macs3:
       broad: false
 
-  Example_INPUT:
-    call_peaks: false
-    replicates:
-      input_a:
-        R1:
-          - "raw/example_input_a_L001_R1.fastq.gz"
-          - "raw/example_input_a_L002_R1.fastq.gz"
-        R2:
-          - "raw/example_input_a_L001_R2.fastq.gz"
-          - "raw/example_input_a_L002_R2.fastq.gz"
-      input_b:
-        R1:
-          - "raw/example_input_b_L001_R1.fastq.gz"
-        R2:
-          - "raw/example_input_b_L001_R2.fastq.gz"
+# Example 2 (commented): ChIP-seq with optional biological replicates and Input.
+# To use it, set assay_type: chipseq above, remove/comment Example 1's samples
+# block, and uncomment this block. The control block may be omitted when no
+# matched Input is available. Every PE replicate may also contain multiple lanes.
+# samples:
+#   Example_TF_ChIP:
+#     control: Example_INPUT
+#     replicates:
+#       rep1:
+#         R1:
+#           - "raw/example_TF_ChIP_rep1_L001_R1.fastq.gz"
+#           - "raw/example_TF_ChIP_rep1_L002_R1.fastq.gz"
+#         R2:
+#           - "raw/example_TF_ChIP_rep1_L001_R2.fastq.gz"
+#           - "raw/example_TF_ChIP_rep1_L002_R2.fastq.gz"
+#       rep2:
+#         R1: ["raw/example_TF_ChIP_rep2_R1.fastq.gz"]
+#         R2: ["raw/example_TF_ChIP_rep2_R2.fastq.gz"]
+#     control_replicates:
+#       rep1: input_rep1
+#       rep2: input_rep2
+#     macs3:
+#       broad: false
+#   Example_INPUT:
+#     call_peaks: false
+#     replicates:
+#       input_rep1:
+#         R1: ["raw/example_INPUT_rep1_R1.fastq.gz"]
+#         R2: ["raw/example_INPUT_rep1_R2.fastq.gz"]
+#       input_rep2:
+#         R1: ["raw/example_INPUT_rep2_R1.fastq.gz"]
+#         R2: ["raw/example_INPUT_rep2_R2.fastq.gz"]
 
 # fastp settings.
 fastp:
@@ -137,6 +142,7 @@ output:
 generate_multiqc: true
 
 # CUT&RUN/CUT&Tag-specific QC.
+# For conventional ChIP-seq, set enabled: false unless these fragment metrics are desired.
 cutrun_qc:
   enabled: true
 

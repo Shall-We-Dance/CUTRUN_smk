@@ -23,18 +23,8 @@ samtools_exclude_flags: 1804
 bedtools_nonamecheck: true
 samples:
   Tiny_ChIP:
-    control: Tiny_INPUT
-    control_replicates: {rep1: input_a}
-    replicates:
-      rep1:
-        R1: [tests/data/tiny_R1.fastq.gz]
-        R2: [tests/data/tiny_R2.fastq.gz]
-  Tiny_INPUT:
-    replicates:
-      input_a:
-        R1: [tests/data/tiny_R1.fastq.gz]
-        R2: [tests/data/tiny_R2.fastq.gz]
-    call_peaks: false
+    R1: [tests/data/tiny_R1.fastq.gz, tests/data/tiny_L002_R1.fastq.gz]
+    R2: [tests/data/tiny_R2.fastq.gz, tests/data/tiny_L002_R2.fastq.gz]
 fastp:
   dedup_adapter:
     enable: true

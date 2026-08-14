@@ -4,6 +4,7 @@ import re
 from snakemake.io import temp
 
 OUTDIR = config.get("output", {}).get("dir", "results")
+ASSAY_TYPE = str(config.get("assay_type", "cutrun")).lower()
 ANALYSIS_MODE = str(config.get("analysis_mode", "standard")).lower()
 LOG_DIR = f"{OUTDIR}/logs"
 
@@ -59,7 +60,22 @@ REPLICATES = {
     sample: list(config["samples"][sample].get("replicates", {}).keys())
     for sample in SAMPLES
 }
-RUN_SAMPLES = [f"{sample}.{rep}" for sample in SAMPLES for rep in REPLICATES[sample]]
+
+
+def implicit_single_replicate(sample):
+    return bool(config["samples"][sample].get("_implicit_single_replicate", False))
+
+
+def run_sample_id(sample, rep):
+    """Public identifier: omit an artificial replicate suffix for flat input."""
+    return sample if implicit_single_replicate(sample) else f"{sample}.{rep}"
+
+
+RUN_SAMPLES = [
+    run_sample_id(sample, rep)
+    for sample in SAMPLES
+    for rep in REPLICATES[sample]
+]
 
 
 def control_replicate_for(sample, chip_rep):
@@ -122,6 +138,8 @@ validate_sample_design()
 
 
 def run_sample_parts(run_sample):
+    if run_sample in SAMPLES and implicit_single_replicate(run_sample):
+        return run_sample, REPLICATES[run_sample][0]
     sample, rep = run_sample.rsplit(".", 1)
     return sample, rep
 
@@ -135,7 +153,7 @@ def replicate_of(run_sample):
 
 
 def sample_replicates(sample):
-    return [f"{sample}.{rep}" for rep in REPLICATES[sample]]
+    return [run_sample_id(sample, rep) for rep in REPLICATES[sample]]
 
 
 def pooled_run_sample(sample):
@@ -501,6 +519,12 @@ def pooled_control_bam(sample):
 # Validation
 # ----------------------------------------------------------------------------
 def validate_workflow_config():
+    if ASSAY_TYPE not in {"cutrun", "chipseq"}:
+        raise ValueError(
+            "assay_type must be 'cutrun' or 'chipseq'. "
+            "Omit it to use the default CUT&RUN mode."
+        )
+
     if READ_TYPE not in {"PE", "SE"}:
         raise ValueError("read_type must be PE or SE.")
     if not SAMPLES:
