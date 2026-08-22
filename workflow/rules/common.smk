@@ -36,6 +36,7 @@ GENERATE_NORMALIZED_BIGWIG = bool(config.get("generate_normalized_bigwig", True)
 TE_CONFIG = config.get("te", {})
 TE_ENABLED = ANALYSIS_MODE == "te"
 TE_ANNOTATION = TE_CONFIG.get("annotation") or None
+TE_OVERLAP_QC_ENABLED = bool(TE_ENABLED and TE_ANNOTATION)
 TE_EXCLUDE_FLAGS = int(TE_CONFIG.get("exclude_flags", 516))
 TE_BLACKLIST_MODE = str(TE_CONFIG.get("blacklist", "none")).lower()
 TE_REMOVE_DUPLICATES = bool(TE_CONFIG.get("remove_duplicates", False))
@@ -61,6 +62,21 @@ REPLICATES = {
     for sample in SAMPLES
 }
 
+# Pooled outputs are meaningful only when a sample has at least two explicitly
+# represented biological replicates.  Flat samples are normalized internally
+# to one implicit ``rep1`` but must not acquire artificial ``.pooled`` outputs.
+POOLED_SAMPLES = [sample for sample in SAMPLES if len(REPLICATES[sample]) >= 2]
+
+
+def wildcard_pattern(values):
+    """Exact-match Snakemake wildcard regex, including a never-match empty case."""
+    if not values:
+        return "(?!)"
+    return "(?:" + "|".join(re.escape(value) for value in values) + ")"
+
+
+POOLED_SAMPLE_PATTERN = wildcard_pattern(POOLED_SAMPLES)
+
 
 def implicit_single_replicate(sample):
     return bool(config["samples"][sample].get("_implicit_single_replicate", False))
@@ -76,6 +92,20 @@ RUN_SAMPLES = [
     for sample in SAMPLES
     for rep in REPLICATES[sample]
 ]
+
+PEAK_SAMPLES = [
+    sample
+    for sample in SAMPLES
+    if config["samples"][sample].get("call_peaks", True)
+]
+PEAK_RUN_SAMPLES = [
+    run_sample_id(sample, rep)
+    for sample in PEAK_SAMPLES
+    for rep in REPLICATES[sample]
+]
+POOLED_PEAK_SAMPLES = [sample for sample in PEAK_SAMPLES if sample in POOLED_SAMPLES]
+POOLED_PEAK_SAMPLE_PATTERN = wildcard_pattern(POOLED_PEAK_SAMPLES)
+FRIP_QC_ENABLED = bool(MACS3_ENABLED and PEAK_RUN_SAMPLES)
 
 
 def control_replicate_for(sample, chip_rep):
@@ -412,6 +442,10 @@ def cutrun_fragment_lengths_multiqc_path():
     return f"{OUTDIR}/qc/cutrun/fragment_lengths_mqc.json"
 
 
+def cutrun_summary_multiqc_path():
+    return f"{OUTDIR}/qc/cutrun/cutrun_qc_summary_mqc.json"
+
+
 def cutrun_qc_paths(run_sample):
     if not CUTRUN_QC_ENABLED:
         return []
@@ -509,11 +543,24 @@ def frip_summary_path():
     return f"{OUTDIR}/qc/frip/frip_summary.tsv"
 
 
+def frip_multiqc_path():
+    return f"{OUTDIR}/qc/frip/frip_summary_mqc.json"
+
+
 def pooled_control_bam(sample):
+    """Return the appropriate control BAM for a pooled IP peak call.
+
+    A multi-replicate control is pooled.  A one-replicate control is used
+    directly so that requesting a pooled IP result never manufactures a
+    redundant ``control.pooled`` BAM.
+    """
     control = config["samples"].get(sample, {}).get("control")
-    if control:
+    if not control:
+        return None
+    if control in POOLED_SAMPLES:
         return pooled_final_bam_path(control)
-    return None
+    control_rep = REPLICATES[control][0]
+    return final_bam_path(run_sample_id(control, control_rep))
 
 
 # Validation

@@ -103,6 +103,8 @@ if not is_single_end():
             samtools index -@ $SORT_T {output.bam} >> {log} 2>&1
             samtools flagstat {output.bam} > {output.flagstat}
             """
+
+
 else:
     rule bowtie2_se:
         input:
@@ -162,6 +164,46 @@ else:
             samtools index -@ $SORT_T {output.bam} >> {log} 2>&1
             samtools flagstat {output.bam} > {output.flagstat}
             """
+
+
+# Pooled final BAMs are shared by pooled tracks and MACS3. Keep this rule
+# independent of MACS3 so replicated samples can still produce pooled BigWigs
+# when peak calling is disabled.
+rule pooled_bam_merge:
+    """Merge final BAMs for samples with at least two biological replicates."""
+    wildcard_constraints:
+        sample=POOLED_SAMPLE_PATTERN
+    input:
+        bams=lambda wc: [
+            final_bam_path(run_sample_id(wc.sample, rep))
+            for rep in REPLICATES[wc.sample]
+        ],
+        bais=lambda wc: [
+            final_bai_path(run_sample_id(wc.sample, rep))
+            for rep in REPLICATES[wc.sample]
+        ]
+    output:
+        bam=pooled_final_bam_path("{sample}"),
+        bai=pooled_final_bai_path("{sample}")
+    log:
+        f"{LOG_DIR}/bowtie2/{{sample}}.pooled_merge.log"
+    threads: int(config["threads"]["samtools"])
+    resources:
+        mem_mb=8000,
+        disk_mb=20000
+    conda:
+        "envs/bowtie2.yaml"
+    shell:
+        """
+        set -euo pipefail
+        mkdir -p $(dirname {output.bam}) $(dirname {log})
+        echo "granted_threads={threads}" > {log}
+        bams=({input.bams})
+        M_T=$(( {threads} - 1 )); [ "$M_T" -lt 0 ] && M_T=0
+        samtools merge -@ $M_T -f {output.bam} "${{bams[@]}}" 2>> {log}
+        samtools index -@ $M_T {output.bam} 2>> {log}
+        samtools quickcheck {output.bam} || {{ echo "quickcheck failed on pooled BAM" >&2; exit 1; }}
+        """
 
 
 # ----------------------------------------------------------------------------

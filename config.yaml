@@ -70,8 +70,9 @@ bedtools_nonamecheck: true
 # within a biological replicate before sample-level QC/alignment.
 #
 # For several biological replicates, use the advanced `replicates:` layout
-# documented in README.md. Sample and explicit replicate names cannot contain
-# a period.
+# documented in README.md. Pooled outputs are generated only when a sample has
+# at least two explicit biological replicates. Sample and explicit replicate
+# names cannot contain a period.
 samples:
   Example_H3K4me3:
     R1:

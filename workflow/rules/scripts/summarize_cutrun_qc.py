@@ -55,7 +55,9 @@ columns = [
     "read_type",
     "total_reads_after_processing",
     "mapped_reads_after_processing",
+    "mapped_fraction_after_processing",
     "usable_reads_after_processing",
+    "usable_fraction_after_processing",
     "proper_pair_reads_after_processing",
     "usable_fragments_after_processing",
     "fragment_lengths",
@@ -69,13 +71,18 @@ for path in usable_paths:
     metrics = read_metric_table(path)
     sample = metrics["sample"]
     spikein = spikein_rows.get(sample, {})
+    total_reads = int(metrics.get("total_reads_after_processing", 0) or 0)
+    mapped_reads = int(metrics.get("mapped_reads_after_processing", 0) or 0)
+    usable_reads = int(metrics.get("usable_reads_after_processing", 0) or 0)
     rows.append(
         {
             "sample": sample,
             "read_type": metrics.get("read_type", ""),
             "total_reads_after_processing": metrics.get("total_reads_after_processing", ""),
             "mapped_reads_after_processing": metrics.get("mapped_reads_after_processing", ""),
+            "mapped_fraction_after_processing": mapped_reads / total_reads if total_reads else 0,
             "usable_reads_after_processing": metrics.get("usable_reads_after_processing", ""),
+            "usable_fraction_after_processing": usable_reads / total_reads if total_reads else 0,
             "proper_pair_reads_after_processing": metrics.get("proper_pair_reads_after_processing", ""),
             "usable_fragments_after_processing": metrics.get("usable_fragments_after_processing", ""),
             "fragment_lengths": fragment_paths.get(sample, ""),
@@ -112,7 +119,78 @@ multiqc_payload = {
     "data": fragment_length_data,
 }
 
-Path(snakemake.output.mqc).parent.mkdir(parents=True, exist_ok=True)
-with open(snakemake.output.mqc, "w", encoding="utf-8") as out:
+Path(snakemake.output.fragments_mqc).parent.mkdir(parents=True, exist_ok=True)
+with open(snakemake.output.fragments_mqc, "w", encoding="utf-8") as out:
     json.dump(multiqc_payload, out, indent=2)
+    out.write("\n")
+
+summary_data = {}
+for row in sorted(rows, key=lambda item: item["sample"]):
+    entry = {
+        "read_type": row["read_type"],
+        "total_reads": int(row["total_reads_after_processing"]),
+        "mapped_fraction": float(row["mapped_fraction_after_processing"]),
+        "usable_reads": int(row["usable_reads_after_processing"]),
+        "usable_fraction": float(row["usable_fraction_after_processing"]),
+        "usable_fragments": int(row["usable_fragments_after_processing"]),
+    }
+    if row["spikein_fragments"] != "":
+        entry["spikein_fragments"] = int(row["spikein_fragments"])
+        entry["spikein_scale_factor"] = float(row["spikein_scale_factor"])
+        entry["spikein_status"] = row["spikein_status"]
+    summary_data[row["sample"]] = entry
+
+summary_payload = {
+    "id": "cutrun_qc_summary",
+    "section_name": "CUT&RUN processing QC",
+    "description": (
+        "Read and fragment counts from the final BAM after configured mapping, "
+        "blacklist, and duplicate filtering. Fractions use total reads in that final BAM."
+    ),
+    "plot_type": "table",
+    "pconfig": {"id": "cutrun_qc_table", "title": "CUT&RUN processing QC"},
+    "headers": {
+        "read_type": {"title": "Type", "description": "PE or SE"},
+        "total_reads": {
+            "title": "Final reads",
+            "description": "Reads in the final processed BAM",
+            "format": "{:,.0f}",
+        },
+        "mapped_fraction": {
+            "title": "Mapped %",
+            "description": "Mapped reads / final BAM reads",
+            "format": "{:.1%}",
+        },
+        "usable_reads": {
+            "title": "Usable reads",
+            "description": "Reads passing configured SAM-flag exclusions",
+            "format": "{:,.0f}",
+        },
+        "usable_fraction": {
+            "title": "Usable %",
+            "description": "Usable reads / final BAM reads",
+            "format": "{:.1%}",
+        },
+        "usable_fragments": {
+            "title": "Usable fragments",
+            "description": "Proper pairs / 2 for PE; usable reads for SE",
+            "format": "{:,.0f}",
+        },
+        "spikein_fragments": {
+            "title": "Spike-in fragments",
+            "description": "Mapped spike-in fragments used for scaling",
+            "format": "{:,.0f}",
+        },
+        "spikein_scale_factor": {
+            "title": "Spike-in scale",
+            "description": "Configured spike-in target / spike-in fragments",
+            "format": "{:.4g}",
+        },
+        "spikein_status": {"title": "Spike-in status"},
+    },
+    "data": summary_data,
+}
+
+with open(snakemake.output.summary_mqc, "w", encoding="utf-8") as out:
+    json.dump(summary_payload, out, indent=2)
     out.write("\n")

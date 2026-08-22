@@ -87,7 +87,8 @@ if CUTRUN_QC_ENABLED:
             spikein=[spikein_scale_factors_path()] if SPIKEIN_ENABLED else []
         output:
             tsv=cutrun_qc_summary_path(),
-            mqc=cutrun_fragment_lengths_multiqc_path()
+            fragments_mqc=cutrun_fragment_lengths_multiqc_path(),
+            summary_mqc=cutrun_summary_multiqc_path()
         conda:
             "envs/cutrun_qc.yaml"
         script:
@@ -126,6 +127,8 @@ if MACS3_ENABLED:
 
     rule frip_pooled:
         """Fragment-level FRiP for pooled BAM against pooled peaks."""
+        wildcard_constraints:
+            sample=POOLED_PEAK_SAMPLE_PATTERN
         input:
             bam=lambda wc: pooled_final_bam_path(wc.sample),
             peaks=lambda wc: macs3_narrow_path(wc.sample, pooled=True),
@@ -157,8 +160,9 @@ if MACS3_ENABLED:
     rule summarize_frip:
         input:
             per_rep=[frip_path(rs) for rs in RUN_SAMPLES if rs in PEAK_RUN_SAMPLES],
-            pooled=[frip_path(sample, pooled=True) for sample in PEAK_SAMPLES],
+            pooled=[frip_path(sample, pooled=True) for sample in POOLED_PEAK_SAMPLES],
         output:
-            tsv=frip_summary_path()
+            tsv=frip_summary_path(),
+            mqc=frip_multiqc_path()
         script:
             "scripts/summarize_frip.py"

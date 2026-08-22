@@ -136,6 +136,8 @@ if GENERATE_NORMALIZED_BIGWIG:
 if GENERATE_NORMALIZED_BIGWIG and len(RUN_SAMPLES) > 0:
     rule pooled_bam_to_bigwig:
         """Normalized coverage of the pooled (replicate-merged) final BAM."""
+        wildcard_constraints:
+            sample=POOLED_SAMPLE_PATTERN
         input:
             bam=lambda wc: pooled_final_bam_path(wc.sample),
             bai=lambda wc: pooled_final_bai_path(wc.sample),

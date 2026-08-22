@@ -83,7 +83,8 @@ samples:
 ```
 
 This produces outputs named with `Example_H3K4me3`, without an artificial
-`.rep1` suffix. MACS3 runs without `-c` when no control is configured.
+`.rep1` suffix. It also does not produce redundant `.pooled` outputs. MACS3
+runs without `-c` when no control is configured.
 
 Use the explicit layout only when biological replicates and/or matched controls
 need to be represented:
@@ -126,6 +127,12 @@ Set a mapping value to `pooled` only when pooling controls is justified by the
 experimental design. The same mapping is used by MACS3 and TE enrichment, and
 invalid mappings fail before DAG construction. Sample and explicit replicate
 names must not contain a period.
+
+Pooled BAMs, normalized BigWigs, peaks, and FRiP rows are generated only for a
+sample with at least two explicitly configured biological replicates. Multiple
+FASTQ lanes within one replicate do not trigger pooling. If a replicated IP is
+matched to a control with only one replicate, that control BAM is used directly
+instead of being copied to a redundant `.pooled` BAM.
 
 Without a control, TE overlap and family-count tables are still produced, but
 ChIP/input enrichment tables contain headers only because enrichment cannot be
@@ -189,6 +196,12 @@ silently promoted to curated.
 
 Logs are written to `<output.dir>/logs/`.
 
+The MultiQC report includes fastp, Bowtie2, processing-stage flagstat metrics,
+duplicate metrics, CUT&RUN final-BAM counts and fragment-length distributions,
+and FRiP. Spike-in columns and TE-overlap QC are added when those analyses are
+enabled. Custom CUT&RUN/FRiP/TE sections are checked after report generation so
+a silently dropped MultiQC custom-content module fails the workflow.
+
 ## Tests
 
 The tiny integration fixtures contain synthetic sequences only.
@@ -198,6 +211,7 @@ The tiny integration fixtures contain synthetic sequences only.
 python tests/test_te_quant.py
 python tests/test_te_quant_pe.py
 python tests/test_frip.py
+python tests/test_multiqc_summaries.py
 
 # End-to-end PE standard, PE TE, and SE smoke tests.
 snakemake --snakefile workflow/Snakefile \
@@ -206,6 +220,10 @@ snakemake --snakefile workflow/Snakefile \
   --configfile tests/config.tiny_te.yaml --use-conda --cores 4
 snakemake --snakefile workflow/Snakefile \
   --configfile tests/config.tiny_se.yaml --use-conda --cores 4
+
+# DAG-only regression: explicit rep1 + rep2 includes pooled outputs.
+snakemake --snakefile workflow/Snakefile \
+  --configfile tests/config.tiny_replicates.yaml --dry-run --cores 4
 ```
 
 The unit tests cover SE and real paired-end 1/N weighting, nested TE records,
