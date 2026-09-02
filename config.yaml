@@ -164,6 +164,8 @@ macs3:
   # The upstream BAM is deduplicated when remove_duplicates=true. Using all
   # avoids applying a second coordinate-level duplicate cutoff in MACS3.
   keep_dup: "all"      # all, auto, or a positive integer.
+  # false: narrowPeak + summits.bed; true: broadPeak + gappedPeak (no summits,
+  # because MACS3 forbids combining --broad with --call-summits).
   broad: false
   broad_cutoff: 0.1
   nomodel: true

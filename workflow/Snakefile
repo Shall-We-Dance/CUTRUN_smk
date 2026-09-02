@@ -84,11 +84,17 @@ if CUTRUN_QC_ENABLED:
     PRIMARY_TARGETS += [fragment_length_path(run_sample) for run_sample in RUN_SAMPLES]
     PRIMARY_TARGETS.append(cutrun_qc_summary_path())
 if FRIP_QC_ENABLED:
-    PRIMARY_TARGETS += [macs3_narrow_path(rs) for rs in PEAK_RUN_SAMPLES]
-    PRIMARY_TARGETS += [macs3_summits_path(rs) for rs in PEAK_RUN_SAMPLES]
+    PRIMARY_TARGETS += [macs3_peak_path(rs) for rs in PEAK_RUN_SAMPLES]
+    PRIMARY_TARGETS += [macs3_gapped_path(rs) for rs in BROAD_PEAK_RUN_SAMPLES]
+    PRIMARY_TARGETS += [macs3_summits_path(rs) for rs in NARROW_PEAK_RUN_SAMPLES]
     PRIMARY_TARGETS += [macs3_xls_path(rs) for rs in PEAK_RUN_SAMPLES]
-    PRIMARY_TARGETS += [macs3_narrow_path(sample, pooled=True) for sample in POOLED_PEAK_SAMPLES]
-    PRIMARY_TARGETS += [macs3_summits_path(sample, pooled=True) for sample in POOLED_PEAK_SAMPLES]
+    PRIMARY_TARGETS += [macs3_peak_path(sample, pooled=True) for sample in POOLED_PEAK_SAMPLES]
+    PRIMARY_TARGETS += [
+        macs3_gapped_path(sample, pooled=True) for sample in POOLED_BROAD_PEAK_SAMPLES
+    ]
+    PRIMARY_TARGETS += [
+        macs3_summits_path(sample, pooled=True) for sample in POOLED_NARROW_PEAK_SAMPLES
+    ]
     PRIMARY_TARGETS += [replicate_concordance_path(sample) for sample in POOLED_PEAK_SAMPLES]
     PRIMARY_TARGETS += [macs3_consensus_path(sample) for sample in POOLED_PEAK_SAMPLES]
     PRIMARY_TARGETS += [frip_path(rs) for rs in PEAK_RUN_SAMPLES]

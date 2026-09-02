@@ -103,8 +103,43 @@ PEAK_RUN_SAMPLES = [
     for sample in PEAK_SAMPLES
     for rep in REPLICATES[sample]
 ]
+
+
+def macs3_config_for_sample(sample):
+    """Global MACS3 settings with sample-level overrides applied."""
+    merged = dict(MACS3_CONFIG)
+    merged.update(config["samples"][sample].get("macs3", {}))
+    return merged
+
+
+def sample_uses_broad_peaks(sample):
+    return bool(macs3_config_for_sample(sample).get("broad", False))
+
+
+BROAD_PEAK_SAMPLES = [sample for sample in PEAK_SAMPLES if sample_uses_broad_peaks(sample)]
+NARROW_PEAK_SAMPLES = [sample for sample in PEAK_SAMPLES if sample not in BROAD_PEAK_SAMPLES]
+BROAD_PEAK_RUN_SAMPLES = [
+    run_sample_id(sample, rep)
+    for sample in BROAD_PEAK_SAMPLES
+    for rep in REPLICATES[sample]
+]
+NARROW_PEAK_RUN_SAMPLES = [
+    run_sample_id(sample, rep)
+    for sample in NARROW_PEAK_SAMPLES
+    for rep in REPLICATES[sample]
+]
+BROAD_PEAK_RUN_SAMPLE_PATTERN = wildcard_pattern(BROAD_PEAK_RUN_SAMPLES)
+NARROW_PEAK_RUN_SAMPLE_PATTERN = wildcard_pattern(NARROW_PEAK_RUN_SAMPLES)
 POOLED_PEAK_SAMPLES = [sample for sample in PEAK_SAMPLES if sample in POOLED_SAMPLES]
 POOLED_PEAK_SAMPLE_PATTERN = wildcard_pattern(POOLED_PEAK_SAMPLES)
+POOLED_BROAD_PEAK_SAMPLES = [
+    sample for sample in POOLED_PEAK_SAMPLES if sample in BROAD_PEAK_SAMPLES
+]
+POOLED_NARROW_PEAK_SAMPLES = [
+    sample for sample in POOLED_PEAK_SAMPLES if sample in NARROW_PEAK_SAMPLES
+]
+POOLED_BROAD_PEAK_SAMPLE_PATTERN = wildcard_pattern(POOLED_BROAD_PEAK_SAMPLES)
+POOLED_NARROW_PEAK_SAMPLE_PATTERN = wildcard_pattern(POOLED_NARROW_PEAK_SAMPLES)
 FRIP_QC_ENABLED = bool(MACS3_ENABLED and PEAK_RUN_SAMPLES)
 
 
@@ -521,12 +556,34 @@ def macs3_narrow_path(run_sample, pooled=False):
     return macs3_peak_prefix(run_sample, pooled) + "_peaks.narrowPeak"
 
 
+def macs3_broad_path(run_sample, pooled=False):
+    return macs3_peak_prefix(run_sample, pooled) + "_peaks.broadPeak"
+
+
+def macs3_gapped_path(run_sample, pooled=False):
+    return macs3_peak_prefix(run_sample, pooled) + "_peaks.gappedPeak"
+
+
+def macs3_peak_path(run_sample, pooled=False):
+    """Primary interval file emitted by narrow or broad MACS3 mode."""
+    sample = run_sample if pooled else sample_of(run_sample)
+    if sample_uses_broad_peaks(sample):
+        return macs3_broad_path(run_sample, pooled)
+    return macs3_narrow_path(run_sample, pooled)
+
+
 def macs3_summits_path(run_sample, pooled=False):
     return macs3_peak_prefix(run_sample, pooled) + "_summits.bed"
 
 
 def macs3_consensus_path(sample):
+    if sample_uses_broad_peaks(sample):
+        return macs3_broad_consensus_path(sample)
     return f"{OUTDIR}/macs3/consensus/{sample}.consensus.narrowPeak"
+
+
+def macs3_broad_consensus_path(sample):
+    return f"{OUTDIR}/macs3/consensus/{sample}.consensus.bed"
 
 
 def replicate_concordance_path(sample):

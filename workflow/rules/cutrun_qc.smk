@@ -99,7 +99,7 @@ if MACS3_ENABLED:
         """Fragment-level FRiP for a replicate's final BAM."""
         input:
             bam=lambda wc: final_bam_path(wc.run_sample),
-            peaks=lambda wc: macs3_narrow_path(wc.run_sample),
+            peaks=lambda wc: macs3_peak_path(wc.run_sample),
         output:
             tsv=frip_path("{run_sample}")
         params:
@@ -131,7 +131,7 @@ if MACS3_ENABLED:
             sample=POOLED_PEAK_SAMPLE_PATTERN
         input:
             bam=lambda wc: pooled_final_bam_path(wc.sample),
-            peaks=lambda wc: macs3_narrow_path(wc.sample, pooled=True),
+            peaks=lambda wc: macs3_peak_path(wc.sample, pooled=True),
         output:
             tsv=frip_path("{sample}", pooled=True)
         params:

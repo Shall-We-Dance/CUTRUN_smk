@@ -145,6 +145,12 @@ as its primary result. If that final BAM has already been coordinate-
 deduplicated, keep `macs3.keep_dup: all`; otherwise MACS3 applies a second
 coordinate-level duplicate filter.
 
+MACS3 output follows the configured peak mode: `broad: false` produces
+`narrowPeak` plus `summits.bed`, while `broad: true` produces `broadPeak` and
+`gappedPeak`. Broad mode does not request summits because MACS3 forbids
+combining `--broad` with `--call-summits`. FRiP, pooled peak calling, and
+replicate concordance automatically use the matching primary peak file.
+
 TE mode adds a separate all-alignment branch:
 
 - Bowtie2 reports up to `te.k` alignments;
@@ -221,9 +227,11 @@ snakemake --snakefile workflow/Snakefile \
 snakemake --snakefile workflow/Snakefile \
   --configfile tests/config.tiny_se.yaml --use-conda --cores 4
 
-# DAG-only regression: explicit rep1 + rep2 includes pooled outputs.
+# DAG-only regressions: pooled gating and mixed narrow/broad MACS3 modes.
 snakemake --snakefile workflow/Snakefile \
   --configfile tests/config.tiny_replicates.yaml --dry-run --cores 4
+snakemake --snakefile workflow/Snakefile \
+  --configfile tests/config.tiny_broad.yaml --dry-run --cores 4
 ```
 
 The unit tests cover SE and real paired-end 1/N weighting, nested TE records,
