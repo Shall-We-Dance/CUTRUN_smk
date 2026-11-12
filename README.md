@@ -128,11 +128,12 @@ experimental design. The same mapping is used by MACS3 and TE enrichment, and
 invalid mappings fail before DAG construction. Sample and explicit replicate
 names must not contain a period.
 
-Pooled BAMs, normalized BigWigs, peaks, and FRiP rows are generated only for a
+Pooled fragment tables, normalized BigWigs, peaks, and FRiP rows are generated only for a
 sample with at least two explicitly configured biological replicates. Multiple
-FASTQ lanes within one replicate do not trigger pooling. If a replicated IP is
-matched to a control with only one replicate, that control BAM is used directly
-instead of being copied to a redundant `.pooled` BAM.
+FASTQ lanes within one replicate do not trigger pooling. Pooled BAMs are also
+retained when `keep_bam: true`. If a replicated IP has a single-replicate
+control, that control's fragment table is used directly without making a
+redundant pooled control.
 
 Without a control, TE overlap and family-count tables are still produced, but
 ChIP/input enrichment tables contain headers only because enrichment cannot be
@@ -140,10 +141,10 @@ estimated without a comparator.
 
 ## Standard versus TE mode
 
-Standard mode uses the MAPQ-filtered, blacklist-filtered, deduplicated branch
-as its primary result. If that final BAM has already been coordinate-
-deduplicated, keep `macs3.keep_dup: all`; otherwise MACS3 applies a second
-coordinate-level duplicate filter.
+Standard mode uses the MAPQ-filtered, optionally blacklist-filtered and
+deduplicated branch as its primary result. MACS3, FRiP, quantitative BigWigs and
+usable-fragment QC consume one shared fragment table. `macs3.keep_dup` must be
+`all`; use upstream `remove_duplicates` for duplicate sensitivity runs.
 
 MACS3 output follows the configured peak mode: `broad: false` produces
 `narrowPeak` plus `summits.bed`, while `broad: true` produces `broadPeak` and
@@ -169,6 +170,11 @@ silently promoted to curated.
 
 ## Important interpretation limits
 
+See [consensus, IDR and fragment-counting documentation](docs/consensus-and-fragments.md)
+for exact matching rules, settings, outputs, and migration notes. Consensus
+uses fixed pooled candidates and configurable k-of-n replicate support; broad
+peaks also have an independently evaluated, basewise-supported core.
+
 - A single biological replicate cannot establish reproducibility; consensus
   and direction-consistency are reported as `NA`.
 - Symmetric peak overlap/Jaccard is QC, not a replacement for TF IDR.
@@ -184,6 +190,7 @@ silently promoted to curated.
 ```text
 <output.dir>/
 ├── bowtie2/                         per-replicate and pooled BAMs
+├── fragments/                       shared BED3 molecule tables
 ├── bigwig/                          replicate and pooled tracks
 ├── macs3/                           replicate, pooled, and consensus peaks
 ├── qc/
@@ -203,7 +210,7 @@ silently promoted to curated.
 Logs are written to `<output.dir>/logs/`.
 
 The MultiQC report includes fastp, Bowtie2, processing-stage flagstat metrics,
-duplicate metrics, CUT&RUN final-BAM counts and fragment-length distributions,
+duplicate metrics, CUT&RUN alignment/usable-fragment counts and span-length distributions,
 and FRiP. Spike-in columns and TE-overlap QC are added when those analyses are
 enabled. Custom CUT&RUN/FRiP/TE sections are checked after report generation so
 a silently dropped MultiQC custom-content module fails the workflow.
@@ -218,6 +225,14 @@ python tests/test_te_quant.py
 python tests/test_te_quant_pe.py
 python tests/test_frip.py
 python tests/test_multiqc_summaries.py
+python tests/test_consensus.py
+# Run with the deeptools rule environment (pyBigWig) and samtools on PATH.
+python tests/test_fragment_coverage.py
+# Run with the IDR environment; IDR=/path/to/idr also selects the executable.
+# The real-fit test is skipped if IDR is not installed; the other tests still run.
+python tests/test_idr.py
+# DAG-only positive/negative configuration checks (Snakemake + PyYAML).
+python tests/test_workflow_config.py
 
 # End-to-end PE standard, PE TE, and SE smoke tests.
 snakemake --snakefile workflow/Snakefile \
@@ -227,16 +242,29 @@ snakemake --snakefile workflow/Snakefile \
 snakemake --snakefile workflow/Snakefile \
   --configfile tests/config.tiny_se.yaml --use-conda --cores 4
 
-# DAG-only regressions: pooled gating and mixed narrow/broad MACS3 modes.
+# Full regressions: pooling, mixed modes, three replicates/optional IDR,
+# and spike-in counting plus MultiQC. These can also be checked with --dry-run.
 snakemake --snakefile workflow/Snakefile \
-  --configfile tests/config.tiny_replicates.yaml --dry-run --cores 4
+  --configfile tests/config.tiny_replicates.yaml --use-conda --cores 4
 snakemake --snakefile workflow/Snakefile \
-  --configfile tests/config.tiny_broad.yaml --dry-run --cores 4
+  --configfile tests/config.tiny_broad.yaml --use-conda --cores 4
+snakemake --snakefile workflow/Snakefile \
+  --configfile tests/config.tiny_consensus.yaml --use-conda --cores 4
+snakemake --snakefile workflow/Snakefile \
+  --configfile tests/config.tiny_spikein.yaml --use-conda --cores 4
+# After all seven integration runs, verify counts, every BigWig base value,
+# pooled molecule multiplicity, candidate/core support, and IDR/MultiQC status.
+# Use the deeptools rule environment (pyBigWig).
+python tests/check_tiny_outputs.py
 ```
 
 The unit tests cover SE and real paired-end 1/N weighting, nested TE records,
 secondary alignments, fragment-level FRiP, orphan mates, and exact BED/SAM
-coordinate boundaries.
+coordinate boundaries. New tests additionally cover fixed candidate boundaries,
+reciprocal/summit matching, per-replicate support, non-bridging broad cores,
+shared BAM-to-fragment counts, BigWig values/normalizations, and real IDR fitting
+on synthetic ranked peaks. The tiny sequencing fixture has too few peaks for a
+meaningful IDR fit and must report `insufficient_peaks`, not success.
 
 ## Reproducibility recommendations
 

@@ -50,8 +50,10 @@ include: "rules/common.smk"
 include: "rules/qc_fastp.smk"
 include: "rules/align_bowtie2.smk"
 include: "rules/spikein.smk"
+include: "rules/fragments.smk"
 include: "rules/bam_to_bigwig.smk"
 include: "rules/macs3.smk"
+include: "rules/idr.smk"
 include: "rules/cutrun_qc.smk"
 include: "rules/te_analysis.smk"
 
@@ -69,6 +71,8 @@ if MULTIQC_TARGET:
 if KEEP_BAM:
     PRIMARY_TARGETS += [final_bam_path(run_sample) for run_sample in RUN_SAMPLES]
     PRIMARY_TARGETS += [final_bai_path(run_sample) for run_sample in RUN_SAMPLES]
+    PRIMARY_TARGETS += [pooled_final_bam_path(sample) for sample in POOLED_SAMPLES]
+    PRIMARY_TARGETS += [pooled_final_bai_path(sample) for sample in POOLED_SAMPLES]
 if GENERATE_RAW_BIGWIG:
     PRIMARY_TARGETS += expand(raw_bigwig_path("{run_sample}"), run_sample=RUN_SAMPLES)
 if GENERATE_NORMALIZED_BIGWIG:
@@ -97,6 +101,10 @@ if FRIP_QC_ENABLED:
     ]
     PRIMARY_TARGETS += [replicate_concordance_path(sample) for sample in POOLED_PEAK_SAMPLES]
     PRIMARY_TARGETS += [macs3_consensus_path(sample) for sample in POOLED_PEAK_SAMPLES]
+    PRIMARY_TARGETS += [consensus_support_path(sample) for sample in POOLED_PEAK_SAMPLES]
+    PRIMARY_TARGETS += [consensus_core_path(sample) for sample in POOLED_BROAD_PEAK_SAMPLES]
+    PRIMARY_TARGETS += [consensus_core_support_path(sample) for sample in POOLED_BROAD_PEAK_SAMPLES]
+    PRIMARY_TARGETS += [idr_summary_path(sample) for sample in IDR_SAMPLES]
     PRIMARY_TARGETS += [frip_path(rs) for rs in PEAK_RUN_SAMPLES]
     PRIMARY_TARGETS += [frip_path(sample, pooled=True) for sample in POOLED_PEAK_SAMPLES]
     PRIMARY_TARGETS.append(frip_summary_path())

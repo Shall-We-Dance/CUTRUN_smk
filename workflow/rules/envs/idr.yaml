@@ -1,0 +1,9 @@
+name: idr
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python=3.10
+  - idr=2.0.4.2
+  - numpy=1.23.5

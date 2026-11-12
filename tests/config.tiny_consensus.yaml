@@ -1,0 +1,74 @@
+# End-to-end regression: broad 2-of-3 cores plus optional narrow pairwise IDR.
+genome: tiny
+assay_type: cutrun
+analysis_mode: standard
+read_type: PE
+threads: {fastp: 2, bowtie2: 4, samtools: 2, deeptools: 2}
+reference:
+  bowtie2_index: tests/data/tiny_ref
+  chrom_sizes: tests/data/tiny.chrom.sizes
+  fasta: tests/data/tiny_ref.fa
+filter_blacklist: false
+remove_duplicates: false
+keep_bam: false
+samples:
+  Tiny_H3K27me3:
+    replicates:
+      rep1:
+        R1: [tests/data/tiny_R1.fastq.gz]
+        R2: [tests/data/tiny_R2.fastq.gz]
+      rep2:
+        R1: [tests/data/tiny_L002_R1.fastq.gz]
+        R2: [tests/data/tiny_L002_R2.fastq.gz]
+      rep3:
+        R1: [tests/data/tiny_R1.fastq.gz]
+        R2: [tests/data/tiny_R2.fastq.gz]
+    consensus:
+      min_replicates: 2
+    macs3:
+      broad: true
+      broad_cutoff: 0.1
+  Tiny_H3K4me3:
+    replicates:
+      rep1:
+        R1: [tests/data/tiny_R1.fastq.gz]
+        R2: [tests/data/tiny_R2.fastq.gz]
+      rep2:
+        R1: [tests/data/tiny_L002_R1.fastq.gz]
+        R2: [tests/data/tiny_L002_R2.fastq.gz]
+    idr:
+      enabled: true
+    consensus:
+      narrow:
+        match: summit_distance
+        summit_distance: 100
+fastp:
+  dedup_adapter: {enable: true, dedup: false, extra: ""}
+bowtie2:
+  max_insert_size: 500
+  mode: very-sensitive
+  mapq_threshold: 20
+output:
+  dir: tests/out_tiny_consensus
+generate_multiqc: false
+cutrun_qc:
+  enabled: true
+spikein:
+  enabled: false
+macs3:
+  enabled: true
+  gsize: 10000
+  qvalue: 0.05
+  extsize: 100
+  keep_dup: all
+  broad: false
+  broad_cutoff: 0.1
+  nomodel: true
+bigwig:
+  bin_size: 5
+  normalization: CPM
+  remove_chrM_and_scaffolds: false
+generate_raw_bigwig: true
+generate_normalized_bigwig: true
+te:
+  annotation: tests/data/not_used.bed

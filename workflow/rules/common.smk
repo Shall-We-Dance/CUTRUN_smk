@@ -1,6 +1,11 @@
 # workflow/rules/common.smk
 import os
 import re
+import sys
+from copy import deepcopy
+
+sys.path.insert(0, os.path.join(workflow.basedir, "rules", "scripts"))
+from consensus import validate_options as validate_consensus_options
 from snakemake.io import temp
 
 OUTDIR = config.get("output", {}).get("dir", "results")
@@ -26,6 +31,35 @@ SPIKEIN_BIGWIG_ENABLED = (
 )
 MACS3_CONFIG = config.get("macs3", {})
 MACS3_ENABLED = bool(MACS3_CONFIG.get("enabled", True))
+FRAGMENT_CONFIG = config.get("fragments", {})
+FRAGMENT_EXCLUDE_FLAGS = int(FRAGMENT_CONFIG.get(
+    "exclude_flags", config.get("samtools_exclude_flags", 1804)
+    | config.get("bigwig", {}).get("samtools_exclude_flags", 0)))
+FRAGMENT_REMOVE_CHRM = bool(FRAGMENT_CONFIG.get(
+    "remove_chrM_and_scaffolds",
+    config.get("bigwig", {}).get("remove_chrM_and_scaffolds", True)))
+
+
+def fragment_se_extension(sample):
+    return int(FRAGMENT_CONFIG.get("se_extension",
+               macs3_config_for_sample(sample).get("extsize", 200)))
+
+
+def consensus_options(sample):
+    merged = deepcopy(config.get("consensus", {}))
+    for key, value in config["samples"][sample].get("consensus", {}).items():
+        if isinstance(value, dict):
+            merged.setdefault(key, {}).update(value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def idr_options(sample):
+    merged = dict(config.get("idr", {}))
+    merged.update(config["samples"][sample].get("idr", {}))
+    return merged
+
 
 GENERATE_RAW_BIGWIG = bool(config.get("generate_raw_bigwig", True))
 GENERATE_NORMALIZED_BIGWIG = bool(config.get("generate_normalized_bigwig", True))
@@ -141,6 +175,11 @@ POOLED_NARROW_PEAK_SAMPLES = [
 POOLED_BROAD_PEAK_SAMPLE_PATTERN = wildcard_pattern(POOLED_BROAD_PEAK_SAMPLES)
 POOLED_NARROW_PEAK_SAMPLE_PATTERN = wildcard_pattern(POOLED_NARROW_PEAK_SAMPLES)
 FRIP_QC_ENABLED = bool(MACS3_ENABLED and PEAK_RUN_SAMPLES)
+IDR_SAMPLES = [sample for sample in POOLED_NARROW_PEAK_SAMPLES if idr_options(sample).get("enabled", False)]
+IDR_RUN_SAMPLES = [run_sample_id(sample, rep) for sample in IDR_SAMPLES for rep in REPLICATES[sample]]
+IDR_SAMPLE_PATTERN = wildcard_pattern(IDR_SAMPLES)
+IDR_RUN_SAMPLE_PATTERN = wildcard_pattern(IDR_RUN_SAMPLES)
+
 
 
 def control_replicate_for(sample, chip_rep):
@@ -357,6 +396,24 @@ def pooled_final_bam_path(sample):
 
 def pooled_final_bai_path(sample):
     return pooled_final_bam_path(sample) + ".bai"
+
+
+# Shared, sorted BED3 files: each row is one accepted molecule.
+def fragments_path(run_sample):
+    return f"{OUTDIR}/fragments/{run_sample}.fragments.bed"
+
+
+def pooled_fragments_path(sample):
+    return f"{OUTDIR}/fragments/pooled/{sample}.pooled.fragments.bed"
+
+
+def pooled_control_fragments(sample):
+    control = config["samples"].get(sample, {}).get("control")
+    if not control:
+        return None
+    if control in POOLED_SAMPLES:
+        return pooled_fragments_path(control)
+    return fragments_path(run_sample_id(control, REPLICATES[control][0]))
 
 
 # --- TE-mode paths --------------------------------------------------------
@@ -577,9 +634,37 @@ def macs3_summits_path(run_sample, pooled=False):
 
 
 def macs3_consensus_path(sample):
-    if sample_uses_broad_peaks(sample):
-        return macs3_broad_consensus_path(sample)
-    return f"{OUTDIR}/macs3/consensus/{sample}.consensus.narrowPeak"
+    return f"{OUTDIR}/macs3/consensus/{sample}.consensus.bed"
+
+
+def consensus_support_path(sample):
+    return f"{OUTDIR}/macs3/consensus/{sample}.support.tsv"
+
+
+def consensus_core_path(sample):
+    return f"{OUTDIR}/macs3/consensus/{sample}.core.bed"
+
+
+def consensus_core_support_path(sample):
+    return f"{OUTDIR}/macs3/consensus/{sample}.core.support.tsv"
+
+
+def idr_relaxed_prefix(identifier, pooled=False):
+    folder = "pooled/" if pooled else ""
+    return f"{OUTDIR}/macs3/idr/relaxed/{folder}{identifier}"
+
+
+def idr_relaxed_path(identifier, pooled=False):
+    return idr_relaxed_prefix(identifier, pooled) + "_peaks.narrowPeak"
+
+
+def idr_pairs_path(sample):
+    return f"{OUTDIR}/macs3/idr/{sample}/pairs"
+
+
+def idr_summary_path(sample):
+    return f"{OUTDIR}/macs3/idr/{sample}/summary.tsv"
+
 
 
 def macs3_broad_consensus_path(sample):
@@ -670,6 +755,27 @@ def validate_workflow_config():
         for key in ["gsize", "qvalue", "extsize"]:
             if key not in MACS3_CONFIG:
                 raise ValueError(f"macs3.enabled is true but macs3.{key} is missing.")
+
+    for sample in PEAK_SAMPLES:
+        if len(REPLICATES[sample]) >= 2:
+            validate_consensus_options(consensus_options(sample), len(REPLICATES[sample]))
+        params = macs3_config_for_sample(sample)
+        if MACS3_ENABLED and str(params.get("keep_dup", "all")) != "all":
+            raise ValueError("macs3.keep_dup must be all: deduplicate upstream to keep the shared fragment population unchanged")
+        if MACS3_ENABLED and is_single_end() and not params.get("nomodel", True):
+            raise ValueError("SE shared fragments require macs3.nomodel: true and an explicit extsize/se_extension")
+        idr_cfg = idr_options(sample)
+        if idr_cfg.get("enabled", False):
+            if not MACS3_ENABLED or sample_uses_broad_peaks(sample) or len(REPLICATES[sample]) < 2:
+                raise ValueError(f"IDR requires MACS3 and >=2 narrow-peak replicates: {sample}")
+            if not 0 < float(idr_cfg.get("threshold", 0.05)) < 1:
+                raise ValueError("idr.threshold must be in (0,1)")
+            if not 0 < float(idr_cfg.get("relaxed_pvalue", 0.1)) < 1:
+                raise ValueError("idr.relaxed_pvalue must be in (0,1)")
+            if idr_cfg.get("rank", "p.value") not in {"p.value", "signal.value"}:
+                raise ValueError("idr.rank must be p.value or signal.value")
+            if int(idr_cfg.get("min_peaks", 20)) < 20:
+                raise ValueError("idr.min_peaks must be >=20")
 
     if ANALYSIS_MODE not in {"standard", "te"}:
         raise ValueError("analysis_mode must be 'standard' or 'te'.")

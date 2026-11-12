@@ -54,7 +54,7 @@ for sample, level, metrics in rows:
         "usable_templates": float(metrics["usable_templates"]),
         "templates_in_peaks": float(metrics["templates_in_peaks"]),
         "fragment_frip": float(metrics["fragment_frip"]),
-        "read_frip": float(metrics["read_frip"]),
+        "read_frip": float(metrics["read_frip"]) if metrics["read_frip"] != "NA" else None,
     }
 
 payload = {
