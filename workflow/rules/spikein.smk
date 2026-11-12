@@ -111,13 +111,15 @@ if SPIKEIN_ENABLED:
     rule spikein_scale_factor:
         input:
             bam=lambda wc: spikein_bam_path(wc.run_sample),
-            bai=lambda wc: spikein_bai_path(wc.run_sample)
+            bai=lambda wc: spikein_bai_path(wc.run_sample),
+            implementation=["workflow/rules/scripts/spikein_templates.py", "workflow/rules/scripts/fragment_records.py"]
         output:
             tsv=spikein_scale_factor_path("{run_sample}")
         params:
             read_type=READ_TYPE,
             scale_to=config.get("spikein", {}).get("scale_to", 10000),
-            min_fragments=config.get("spikein", {}).get("min_fragments", 1000)
+            min_fragments=config.get("spikein", {}).get("min_fragments", 1000),
+            exclude_flags=FRAGMENT_EXCLUDE_FLAGS
         log:
             f"{LOG_DIR}/spikein/{{run_sample}}.scale_factor.log"
         threads: int(config["threads"]["samtools"])
@@ -128,21 +130,11 @@ if SPIKEIN_ENABLED:
             set -euo pipefail
             mkdir -p $(dirname {output.tsv}) $(dirname {log})
 
-            if [ "{params.read_type}" = "PE" ]; then
-                spikein_reads=$(samtools view -c -f 2 -F 4 {input.bam} 2>> {log})
-                spikein_fragments=$((spikein_reads / 2))
-            else
-                spikein_reads=$(samtools view -c -F 4 {input.bam} 2>> {log})
-                spikein_fragments="$spikein_reads"
-            fi
-
-            scale_factor=$(awk -v scale_to="{params.scale_to}" -v fragments="$spikein_fragments" 'BEGIN {{if (fragments > 0) printf "%.10f", scale_to / fragments; else printf "1"}}')
-            status=$(awk -v fragments="$spikein_fragments" -v min_fragments="{params.min_fragments}" 'BEGIN {{if (fragments == 0) print "NO_SPIKEIN"; else if (fragments < min_fragments) print "LOW_SPIKEIN"; else print "OK"}}')
-
-            {{
-                printf "sample\tspikein_reads\tspikein_fragments\tscale_to\tscale_factor\tstatus\n"
-                printf "{wildcards.run_sample}\t%s\t%s\t{params.scale_to}\t%s\t%s\n" "$spikein_reads" "$spikein_fragments" "$scale_factor" "$status"
-            }} > {output.tsv}
+            python workflow/rules/scripts/spikein_templates.py \
+                --bam {input.bam:q} --read-type {params.read_type} \
+                --exclude-flags {params.exclude_flags} --threads {threads} \
+                --sample {wildcards.run_sample:q} --scale-to {params.scale_to} \
+                --min-fragments {params.min_fragments} --out {output.tsv:q} > {log:q} 2>&1
             """
 
     rule summarize_spikein_scale_factors:

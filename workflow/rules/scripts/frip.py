@@ -124,7 +124,9 @@ def iterate_name_sorted(bam, threads=1):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--bam", required=True)
+    source = ap.add_mutually_exclusive_group(required=True)
+    source.add_argument("--bam", help="Legacy standalone BAM mode (unextended SE reads)")
+    source.add_argument("--fragments", help="Shared pipeline BED3 fragment population")
     ap.add_argument("--peaks", required=True)
     ap.add_argument("--read-type", choices=["PE", "SE"], default="PE")
     ap.add_argument("--sample", default="sample")
@@ -133,6 +135,22 @@ def main():
     args = ap.parse_args()
 
     peaks = PeakIndex(args.peaks)
+    if args.fragments:
+        from fragment_records import bed_fragments
+        total = inside = 0
+        for chrom, start, end in bed_fragments(args.fragments):
+            total += 1
+            inside += peaks.overlaps(chrom, start, end)
+        with open(args.out, "w") as out:
+            out.write("metric\tvalue\n")
+            out.write(f"sample\t{args.sample}\ncounting_unit\tfragment\n")
+            out.write(f"usable_templates\t{total}\ntemplates_in_peaks\t{inside}\n")
+            out.write(f"fragment_frip\t{inside / total if total else 0:.6f}\n")
+            # Read-end FRiP cannot be reconstructed from a fragment span.
+            for key in ["total_reads", "mapped_reads", "reads_in_peaks", "read_frip"]:
+                out.write(f"{key}\tNA\n")
+        print(f"[frip] {args.sample}: shared fragments {inside}/{total}")
+        return
     total_reads = 0
     mapped_reads = 0
     usable_templates = 0

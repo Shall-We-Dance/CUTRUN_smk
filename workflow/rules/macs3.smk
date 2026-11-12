@@ -1,7 +1,7 @@
 # rules/macs3.smk
 
 if MACS3_ENABLED:
-    def macs3_sample_params(sample, run_sample=None):
+    def macs3_sample_params(sample):
         """Per-sample MACS3 parameters (sample-level overrides on top of the
         global macs3 config).
 
@@ -10,54 +10,56 @@ if MACS3_ENABLED:
         must not apply a second coordinate-level dedup (--keep-dup 1) -- that
         would also wrongly collapse fragments from different biological
         replicates in pooled calls. Default is therefore "all"; keep the
-        option for sensitivity runs.
+        upstream duplicate-removal switch for sensitivity runs.
         """
         merged = macs3_config_for_sample(sample)
         if "keep_dup" not in merged:
-            merged["keep_dup"] = "all" if REMOVE_DUPLICATES else "1"
+            merged["keep_dup"] = "all"
         return merged
 
-    def macs3_control_bam(wc, pooled=False):
+    def macs3_control_fragments(wc, pooled=False):
         sample = sample_of(wc.run_sample) if not pooled else wc.sample
         control = config["samples"].get(sample, {}).get("control")
         if not control:
             return []
         if pooled:
-            return pooled_control_bam(sample)
+            return pooled_control_fragments(sample)
         rep = replicate_of(wc.run_sample)
         control_rep = control_replicate_for(sample, rep)
         if control_rep == "pooled":
-            return pooled_control_bam(sample)
-        return final_bam_path(run_sample_id(control, control_rep))
+            return pooled_control_fragments(sample)
+        return fragments_path(run_sample_id(control, control_rep))
 
     def macs3_callpeak_shell():
         """Shared MACS3 command; mode_args is mutually exclusive by rule."""
         return r"""
             set -euo pipefail
-            mkdir -p {params.outdir} $(dirname {log})
-            echo "resolved keep_dup={params.keep_dup} (upstream remove_duplicates={REMOVE_DUPLICATES})" > {log}
-            echo "peak_mode={params.peak_mode}" >> {log}
-            control_args=""
-            if [ -n "{input.control}" ]; then
-                control_args="-c {input.control}"
+            mkdir -p {params.outdir:q} $(dirname {log:q})
+            echo "resolved keep_dup={params.keep_dup} (upstream remove_duplicates={REMOVE_DUPLICATES})" > {log:q}
+            echo "peak_mode={params.peak_mode}" >> {log:q}
+            if [ ! -s {input.fragments:q} ]; then
+                echo "No usable fragments; writing empty peak outputs (no fit)." >> {log:q}
+                for path in {output:q}; do : > "$path"; done
+                exit 0
             fi
-            nomodel_opt=""
-            if [ "{params.nomodel}" = "True" ]; then
-                nomodel_opt="--nomodel --extsize {params.extsize}"
-            else
-                nomodel_opt="--extsize {params.extsize}"
-            fi
+            control_args=()
+            for control in {input.control:q}; do
+                if [ ! -s "$control" ]; then
+                    echo "Configured control has no usable fragments: $control" >&2
+                    exit 1
+                fi
+                control_args+=(-c "$control")
+            done
             macs3 callpeak \
-                -t {input.bam} \
-                $control_args \
+                -t {input.fragments:q} \
+                "${{control_args[@]}}" \
                 -f {params.fmt} \
                 -g {params.gsize} \
-                -n {params.name} \
-                --outdir {params.outdir} \
-                $nomodel_opt \
+                -n {params.name:q} \
+                --outdir {params.outdir:q} \
                 --keep-dup {params.keep_dup} \
                 -q {params.qvalue} \
-                {params.mode_args} >> {log} 2>&1
+                {params.mode_args} >> {log:q} 2>&1
             """
 
     rule macs3_callpeak:
@@ -65,8 +67,8 @@ if MACS3_ENABLED:
         wildcard_constraints:
             run_sample=NARROW_PEAK_RUN_SAMPLE_PATTERN
         input:
-            bam=lambda wc: final_bam_path(wc.run_sample),
-            control=macs3_control_bam
+            fragments=lambda wc: fragments_path(wc.run_sample),
+            control=macs3_control_fragments
         output:
             xls=macs3_xls_path("{run_sample}"),
             narrow=macs3_narrow_path("{run_sample}"),
@@ -76,10 +78,8 @@ if MACS3_ENABLED:
             name="{run_sample}",
             gsize=lambda wc: macs3_sample_params(sample_of(wc.run_sample))["gsize"],
             qvalue=lambda wc: macs3_sample_params(sample_of(wc.run_sample))["qvalue"],
-            extsize=lambda wc: macs3_sample_params(sample_of(wc.run_sample))["extsize"],
-            fmt="BAM" if is_single_end() else "BAMPE",
+            fmt="BEDPE",
             keep_dup=lambda wc: str(macs3_sample_params(sample_of(wc.run_sample)).get("keep_dup", "all")),
-            nomodel=lambda wc: macs3_sample_params(sample_of(wc.run_sample)).get("nomodel", True),
             peak_mode="narrow",
             mode_args="--call-summits"
         log:
@@ -97,8 +97,8 @@ if MACS3_ENABLED:
         wildcard_constraints:
             run_sample=BROAD_PEAK_RUN_SAMPLE_PATTERN
         input:
-            bam=lambda wc: final_bam_path(wc.run_sample),
-            control=macs3_control_bam
+            fragments=lambda wc: fragments_path(wc.run_sample),
+            control=macs3_control_fragments
         output:
             xls=macs3_xls_path("{run_sample}"),
             broad=macs3_broad_path("{run_sample}"),
@@ -108,10 +108,8 @@ if MACS3_ENABLED:
             name="{run_sample}",
             gsize=lambda wc: macs3_sample_params(sample_of(wc.run_sample))["gsize"],
             qvalue=lambda wc: macs3_sample_params(sample_of(wc.run_sample))["qvalue"],
-            extsize=lambda wc: macs3_sample_params(sample_of(wc.run_sample))["extsize"],
-            fmt="BAM" if is_single_end() else "BAMPE",
+            fmt="BEDPE",
             keep_dup=lambda wc: str(macs3_sample_params(sample_of(wc.run_sample)).get("keep_dup", "all")),
-            nomodel=lambda wc: macs3_sample_params(sample_of(wc.run_sample)).get("nomodel", True),
             peak_mode="broad",
             mode_args=lambda wc: "--broad --broad-cutoff " + str(
                 macs3_sample_params(sample_of(wc.run_sample)).get("broad_cutoff", 0.1)
@@ -127,12 +125,12 @@ if MACS3_ENABLED:
         shell: macs3_callpeak_shell()
 
     rule macs3_pooled_peaks:
-        """Call narrow peaks and summits on a pooled replicate BAM."""
+        """Call narrow peaks and summits on a pooled replicate fragment table."""
         wildcard_constraints:
             sample=POOLED_NARROW_PEAK_SAMPLE_PATTERN
         input:
-            bam=lambda wc: pooled_final_bam_path(wc.sample),
-            control=lambda wc: pooled_control_bam(wc.sample) or []
+            fragments=lambda wc: pooled_fragments_path(wc.sample),
+            control=lambda wc: pooled_control_fragments(wc.sample) or []
         output:
             xls=macs3_xls_path("{sample}", pooled=True),
             narrow=macs3_narrow_path("{sample}", pooled=True),
@@ -142,10 +140,8 @@ if MACS3_ENABLED:
             name=lambda wc: f"{wc.sample}.pooled",
             gsize=lambda wc: macs3_sample_params(wc.sample)["gsize"],
             qvalue=lambda wc: macs3_sample_params(wc.sample)["qvalue"],
-            extsize=lambda wc: macs3_sample_params(wc.sample)["extsize"],
-            fmt="BAM" if is_single_end() else "BAMPE",
+            fmt="BEDPE",
             keep_dup=lambda wc: str(macs3_sample_params(wc.sample).get("keep_dup", "all")),
-            nomodel=lambda wc: macs3_sample_params(wc.sample).get("nomodel", True),
             peak_mode="narrow",
             mode_args="--call-summits"
         log:
@@ -159,12 +155,12 @@ if MACS3_ENABLED:
         shell: macs3_callpeak_shell()
 
     rule macs3_pooled_peaks_broad:
-        """Call broad and gapped peaks on a pooled replicate BAM; no summits."""
+        """Call broad and gapped peaks on a pooled replicate fragment table; no summits."""
         wildcard_constraints:
             sample=POOLED_BROAD_PEAK_SAMPLE_PATTERN
         input:
-            bam=lambda wc: pooled_final_bam_path(wc.sample),
-            control=lambda wc: pooled_control_bam(wc.sample) or []
+            fragments=lambda wc: pooled_fragments_path(wc.sample),
+            control=lambda wc: pooled_control_fragments(wc.sample) or []
         output:
             xls=macs3_xls_path("{sample}", pooled=True),
             broad=macs3_broad_path("{sample}", pooled=True),
@@ -174,10 +170,8 @@ if MACS3_ENABLED:
             name=lambda wc: f"{wc.sample}.pooled",
             gsize=lambda wc: macs3_sample_params(wc.sample)["gsize"],
             qvalue=lambda wc: macs3_sample_params(wc.sample)["qvalue"],
-            extsize=lambda wc: macs3_sample_params(wc.sample)["extsize"],
-            fmt="BAM" if is_single_end() else "BAMPE",
+            fmt="BEDPE",
             keep_dup=lambda wc: str(macs3_sample_params(wc.sample).get("keep_dup", "all")),
-            nomodel=lambda wc: macs3_sample_params(wc.sample).get("nomodel", True),
             peak_mode="broad",
             mode_args=lambda wc: "--broad --broad-cutoff " + str(
                 macs3_sample_params(wc.sample).get("broad_cutoff", 0.1)
@@ -200,38 +194,51 @@ if MACS3_ENABLED:
         ]
 
     rule replicate_concordance:
-        """Order-independent replicate peak consensus + concordance metrics.
-
-        Uses replicate_consensus.py (symmetric consensus, bidirectional
-        overlap, bp Jaccard); NOT the previous order-dependent intersect."""
+        """Fixed pooled candidates, configurable narrow matching, named support."""
         wildcard_constraints:
             sample=POOLED_NARROW_PEAK_SAMPLE_PATTERN
         input:
-            peaks=replicate_peak_inputs
+            peaks=replicate_peak_inputs,
+            candidates=lambda wc: macs3_peak_path(wc.sample, pooled=True),
+            implementation="workflow/rules/scripts/consensus.py"
         output:
             tsv=replicate_concordance_path("{sample}"),
-            consensus=f"{OUTDIR}/macs3/consensus/{{sample}}.consensus.narrowPeak"
+            consensus=macs3_consensus_path("{sample}"),
+            support=consensus_support_path("{sample}")
+        params:
+            mode="narrow",
+            replicates=lambda wc: REPLICATES[wc.sample],
+            options=lambda wc: consensus_options(wc.sample)
         log:
             f"{LOG_DIR}/qc/{{sample}}.replicate_concordance.log"
         threads: 1
         conda:
-            "envs/bowtie2.yaml"
+            "envs/cutrun_qc.yaml"
         script:
             "scripts/replicate_consensus.py"
 
     rule replicate_concordance_broad:
-        """Replicate concordance for broadPeak inputs, with a generic BED consensus."""
+        """Candidate-level coverage support plus non-bridging basewise core."""
         wildcard_constraints:
             sample=POOLED_BROAD_PEAK_SAMPLE_PATTERN
         input:
-            peaks=replicate_peak_inputs
+            peaks=replicate_peak_inputs,
+            candidates=lambda wc: macs3_peak_path(wc.sample, pooled=True),
+            implementation="workflow/rules/scripts/consensus.py"
         output:
             tsv=replicate_concordance_path("{sample}"),
-            consensus=macs3_broad_consensus_path("{sample}")
+            consensus=macs3_consensus_path("{sample}"),
+            support=consensus_support_path("{sample}"),
+            core=consensus_core_path("{sample}"),
+            core_support=consensus_core_support_path("{sample}")
+        params:
+            mode="broad",
+            replicates=lambda wc: REPLICATES[wc.sample],
+            options=lambda wc: consensus_options(wc.sample)
         log:
             f"{LOG_DIR}/qc/{{sample}}.replicate_concordance.log"
         threads: 1
         conda:
-            "envs/bowtie2.yaml"
+            "envs/cutrun_qc.yaml"
         script:
             "scripts/replicate_consensus.py"

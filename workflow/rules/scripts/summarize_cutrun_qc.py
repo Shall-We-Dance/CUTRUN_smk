@@ -106,7 +106,7 @@ fragment_length_data = {
 multiqc_payload = {
     "id": "cutrun_fragment_lengths",
     "section_name": "CUT&RUN Fragment Lengths",
-    "description": "Fragment or read length distributions calculated from the final BAM after configured filtering steps.",
+    "description": "Accepted fragment-span lengths after shared pair, flag, chromosome and blacklist validation; SE lengths reflect the configured extension.",
     "plot_type": "linegraph",
     "pconfig": {
         "id": "cutrun_fragment_lengths_plot",
@@ -144,8 +144,8 @@ summary_payload = {
     "id": "cutrun_qc_summary",
     "section_name": "CUT&RUN processing QC",
     "description": (
-        "Read and fragment counts from the final BAM after configured mapping, "
-        "blacklist, and duplicate filtering. Fractions use total reads in that final BAM."
+        "Alignment counts from the final BAM after configured mapping, "
+        "blacklist, and duplicate filtering; usable counts additionally require shared fragment validation. Fractions use total reads in that final BAM."
     ),
     "plot_type": "table",
     "pconfig": {"id": "cutrun_qc_table", "title": "CUT&RUN processing QC"},
@@ -173,7 +173,7 @@ summary_payload = {
         },
         "usable_fragments": {
             "title": "Usable fragments",
-            "description": "Proper pairs / 2 for PE; usable reads for SE",
+            "description": "Validated two-mate templates for PE; accepted extended alignments for SE",
             "format": "{:,.0f}",
         },
         "spikein_fragments": {

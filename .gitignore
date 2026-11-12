@@ -4,6 +4,7 @@
 # Pipeline outputs and logs
 results/
 logs/
+tests/out_*/
 
 # Local environment / editor files
 .env

@@ -136,6 +136,22 @@ properties:
   samtools_exclude_flags:
     type: integer
     minimum: 0
+  consensus:
+    $ref: "#/$defs/consensus"
+  idr:
+    $ref: "#/$defs/idr"
+  fragments:
+    type: object
+    additionalProperties: false
+    properties:
+      exclude_flags:
+        type: integer
+        minimum: 0
+      remove_chrM_and_scaffolds:
+        type: boolean
+      se_extension:
+        type: integer
+        minimum: 1
   bedtools_nonamecheck:
     type: boolean
   samples:
@@ -189,6 +205,10 @@ properties:
             DAG construction and is used by both MACS3 and TE enrichment.
         call_peaks:
           type: boolean
+        consensus:
+          $ref: "#/$defs/consensus"
+        idr:
+          $ref: "#/$defs/idr"
         macs3:
           type: object
           additionalProperties: true
@@ -301,6 +321,7 @@ properties:
         minimum: 1
       normalization:
         type: string
+        enum: ["RPKM", "CPM", "BPM", "RPGC", "None"]
       samtools_exclude_flags:
         type: integer
         minimum: 0
@@ -332,3 +353,60 @@ properties:
         minimum: 0
       generate_bigwig:
         type: boolean
+
+$defs:
+  consensus:
+    type: object
+    additionalProperties: false
+    properties:
+      min_replicates:
+        anyOf:
+          - type: string
+            enum: ["majority", "all"]
+          - type: integer
+            minimum: 2
+      narrow:
+        type: object
+        additionalProperties: false
+        properties:
+          match:
+            type: string
+            enum: ["reciprocal_overlap", "summit_distance"]
+          min_overlap_fraction:
+            type: number
+            exclusiveMinimum: 0
+            maximum: 1
+          summit_distance:
+            type: integer
+            minimum: 0
+      broad:
+        type: object
+        additionalProperties: false
+        properties:
+          min_coverage_fraction:
+            type: number
+            exclusiveMinimum: 0
+            maximum: 1
+          min_core_length:
+            type: integer
+            minimum: 1
+  idr:
+    type: object
+    additionalProperties: false
+    properties:
+      enabled:
+        type: boolean
+      threshold:
+        type: number
+        exclusiveMinimum: 0
+        exclusiveMaximum: 1
+      relaxed_pvalue:
+        type: number
+        exclusiveMinimum: 0
+        exclusiveMaximum: 1
+      rank:
+        type: string
+        enum: ["p.value", "signal.value"]
+      min_peaks:
+        type: integer
+        minimum: 20
