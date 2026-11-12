@@ -1,5 +1,10 @@
 # CUT&RUN / CUT&Tag / ChIP-seq Snakemake pipeline
 
+[![Run with Conda](https://img.shields.io/badge/run%20with-conda-44A833?logo=anaconda&logoColor=white)](https://docs.conda.io/)
+[![Snakemake >=9.3.3](https://img.shields.io/badge/Snakemake-%E2%89%A59.3.3-039475?logo=snakemake&logoColor=white)](https://snakemake.readthedocs.io/)
+[![Platform: Linux](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)](#requirements)
+[![CUTRUN CI](https://github.com/Shall-We-Dance/CUTRUN_smk/actions/workflows/ci.yml/badge.svg?event=pull_request)](https://github.com/Shall-We-Dance/CUTRUN_smk/actions/workflows/ci.yml)
+
 A replicate-aware Snakemake workflow for paired-end or single-end chromatin
 profiling. It supports a conventional unique-mapper workflow and an optional
 TE-aware mode that retains multimappers and reports family-level 1/N-weighted
@@ -218,6 +223,32 @@ a silently dropped MultiQC custom-content module fails the workflow.
 ## Tests
 
 The tiny integration fixtures contain synthetic sequences only.
+
+### Continuous integration
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on pull requests, pushes to
+`main`, and manual dispatch. Three independent checks run on synthetic fixtures:
+
+- `CI / core`: consensus boundaries/support, fragment coverage and bigWig,
+  FRiP, PE/SE TE counting, and positive/negative Snakemake DAG validation.
+- `CI / multiqc`: custom-content report rendering and numeric fragment-length
+  ordering, using the workflow's MultiQC environment.
+- `CI / idr`: threshold handling and a real IDR fit on synthetic ranked peaks,
+  using the workflow's IDR environment.
+
+Missing required executables/imports fail the CI entrypoint rather than silently
+skipping those tests. Environment inventories and test logs are retained for
+14 days. Jobs have read-only repository permissions and do not need secrets,
+private experiment configs, or sequencing data. The tests explicitly use fixture
+configs, not the top-level project `config.yaml`.
+
+To reproduce locally, create/activate `tests/envs/ci-core.yaml` (core),
+`workflow/rules/envs/multiqc.yaml` (multiqc), or
+`workflow/rules/envs/idr.yaml` (idr), then run `bash tests/run_ci.sh <suite>`.
+These checks do not replace the full tiny end-to-end workflows below (alignment,
+peak calling, and all output checks). Branch-protection requirements are managed
+separately; enable required checks only after the workflow has run successfully
+on GitHub.
 
 ```bash
 # Unit tests require samtools on PATH (or SAMTOOLS=/path/to/samtools).

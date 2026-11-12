@@ -1,0 +1,62 @@
+name: CUTRUN CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cutrun-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: CI / ${{ matrix.suite }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: core
+            environment: tests/envs/ci-core.yaml
+          - suite: multiqc
+            environment: workflow/rules/envs/multiqc.yaml
+          - suite: idr
+            environment: workflow/rules/envs/idr.yaml
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          activate-environment: cutrun-ci
+          environment-file: ${{ matrix.environment }}
+          auto-activate-base: false
+      - name: Run tests (required dependencies must be present)
+        env:
+          CI_SUITE: ${{ matrix.suite }}
+          MPLBACKEND: Agg
+          OMP_NUM_THREADS: '1'
+          OPENBLAS_NUM_THREADS: '1'
+        run: |
+          set -euo pipefail
+          mkdir -p ci-logs
+          conda list > ci-logs/environment.txt
+          bash tests/run_ci.sh "$CI_SUITE" 2>&1 | tee ci-logs/tests.log
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-${{ matrix.suite }}-logs
+          path: ci-logs/
+          if-no-files-found: ignore
+          retention-days: 14
