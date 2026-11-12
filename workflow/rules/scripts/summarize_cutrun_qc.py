@@ -41,7 +41,12 @@ def read_fragment_lengths(path):
             fragment_length, count = line.rstrip("\n").split("\t", 1)
             length = str(int(fragment_length))
             counts[length] = counts.get(length, 0) + int(count)
-    return counts
+    # JSON object keys are strings. Some MultiQC versions sort these before
+    # numeric conversion (100, 101, ..., 50), creating backtracking lines.
+    # Equal-width numeric keys sort correctly in both string and numeric paths;
+    # the plot still uses a continuous numeric axis, not categorical spacing.
+    width = max((len(length) for length in counts), default=1)
+    return {length.zfill(width): counts[length] for length in sorted(counts, key=int)}
 
 
 usable_paths = list(snakemake.input.usable)
@@ -115,6 +120,8 @@ multiqc_payload = {
         "ylab": "Count",
         "xDecimals": False,
         "yDecimals": False,
+        "categories": False,
+        "smooth_points": None,
     },
     "data": fragment_length_data,
 }

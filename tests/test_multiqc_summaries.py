@@ -27,7 +27,7 @@ def run_cutrun_summary(tmpdir):
         "usable_fragments_after_processing\t30\n"
     )
     fragments = tmpdir / "SampleA.fragment_lengths.tsv"
-    fragments.write_text("fragment_length\tcount\n100\t3\n150\t2\n")
+    fragments.write_text("fragment_length\tcount\n100\t3\n150\t2\n9\t1\n50\t4\n500\t5\n50\t2\n")
     outputs = SimpleNamespace(
         tsv=str(tmpdir / "cutrun_qc_summary.tsv"),
         fragments_mqc=str(tmpdir / "fragment_lengths_mqc.json"),
@@ -47,7 +47,19 @@ def run_cutrun_summary(tmpdir):
     assert summary["data"]["SampleA"]["mapped_fraction"] == 0.9
     assert summary["data"]["SampleA"]["usable_fragments"] == 30
     assert fragments_payload["pconfig"]["id"] == "cutrun_fragment_lengths_plot"
-    assert fragments_payload["data"]["SampleA"] == {"100": 3, "150": 2}
+    assert fragments_payload["data"]["SampleA"] == {"009": 1, "050": 6, "100": 3, "150": 2, "500": 5}
+    assert fragments_payload["pconfig"]["smooth_points"] is None
+    # Exercise MultiQC's actual series builder after the JSON round trip.
+    if shutil.which("multiqc"):
+        from multiqc.plots.linegraph import _make_series_dict
+        from multiqc.plots.plotly.line import LinePlotConfig
+        series = _make_series_dict(
+            LinePlotConfig(**fragments_payload["pconfig"]), None,
+            "SampleA", fragments_payload["data"]["SampleA"],
+        )
+        assert [(float(x), y) for x, y in series.pairs] == [
+            (9, 1), (50, 6), (100, 3), (150, 2), (500, 5)
+        ]
     return outputs
 
 
